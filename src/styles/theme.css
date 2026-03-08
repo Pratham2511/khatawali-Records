@@ -1,0 +1,92 @@
+:root {
+  --primary: #275efe;
+  --secondary: #1e40af;
+  --background: #f8fafc;
+  --accent: #10b981;
+  --text: #0f172a;
+  --muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--background);
+  color: var(--text);
+}
+
+a {
+  color: var(--primary);
+}
+
+a:hover {
+  color: var(--secondary);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.brand-logo {
+  height: 32px;
+  width: 32px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--secondary);
+  border-color: var(--secondary);
+}
+
+.badge-accent {
+  background: var(--accent);
+  color: #fff;
+}
+
+.table thead {
+  background: #e5edff;
+}
+
+.loader-shell {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.form-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--secondary);
+}
+
+.section-card {
+  margin-bottom: 1.5rem;
+}
+
+.accent-text {
+  color: var(--secondary);
+  font-weight: 600;
+}
+
+.footer-credit {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
