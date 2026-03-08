@@ -17,8 +17,8 @@ const App = () => {
   };
 
   return (
-    <div>
-      <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3">
+    <div className="app-shell">
+      <nav className="navbar navbar-expand-lg navbar-light gradient-nav shadow-sm mb-3">
         <div className="container-fluid">
           <Link className="navbar-brand" to="/">
             <img src={logoSrc} alt="Khatawali logo" className="brand-logo me-2" />

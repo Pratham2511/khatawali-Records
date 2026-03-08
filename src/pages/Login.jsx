@@ -76,49 +76,68 @@ const Login = () => {
 
   return (
     <div className="row justify-content-center">
-      <div className="col-lg-10">
-        <div className="row g-3">
+      <div className="col-lg-9 col-xl-8">
+
+        {/* Hero branding */}
+        <div className="login-hero">
+          <img src="/icon-192.png" alt="Khatawali" className="hero-logo" />
+          <h1>Khatawali</h1>
+          <p>Your personal expense ledger — simple, fast &amp; reliable.</p>
+        </div>
+
+        {/* Shared alerts */}
+        {error   && <div className="alert alert-danger mb-3">{error}</div>}
+        {message && <div className="alert alert-success mb-3">{message}</div>}
+
+        <div className="row g-4">
+          {/* Login */}
           <div className="col-md-6">
-            <div className="card p-4">
-              <h2 className="mb-3">Login</h2>
-              {error && <div className="alert alert-danger py-2">{error}</div>}
-              {message && <div className="alert alert-success py-2">{message}</div>}
+            <div className="card p-4 h-100">
+              <div className="form-section-title mb-3">
+                <span style={{fontSize:'1.2rem'}}>🔑</span> Login
+              </div>
               <form onSubmit={handleLogin}>
                 <div className="mb-3">
                   <label className="form-label">Email</label>
                   <input
                     type="email"
                     className="form-control"
+                    placeholder="you@example.com"
                     value={loginForm.email}
                     onChange={(e) => setLoginForm((p) => ({ ...p, email: e.target.value }))}
                     required
                   />
                 </div>
-                <div className="mb-3">
+                <div className="mb-4">
                   <label className="form-label">Password</label>
                   <input
                     type="password"
                     className="form-control"
+                    placeholder="••••••••"
                     value={loginForm.password}
                     onChange={(e) => setLoginForm((p) => ({ ...p, password: e.target.value }))}
                     required
                   />
                 </div>
-                <button className="btn btn-primary w-100" type="submit" disabled={loading}>
-                  {loading ? 'Signing in...' : 'Login'}
+                <button className="btn btn-primary w-100 py-2" type="submit" disabled={loading}>
+                  {loading ? 'Signing in…' : 'Login →'}
                 </button>
               </form>
             </div>
           </div>
 
+          {/* Register */}
           <div className="col-md-6">
-            <div className="card p-4">
-              <h2 className="mb-3">Register</h2>
+            <div className="card p-4 h-100">
+              <div className="form-section-title mb-3">
+                <span style={{fontSize:'1.2rem'}}>✉️</span> Register
+              </div>
               <form onSubmit={handleRegister}>
                 <div className="mb-3">
                   <label className="form-label">Name</label>
                   <input
                     className="form-control"
+                    placeholder="Your full name"
                     value={registerForm.name}
                     onChange={(e) => setRegisterForm((p) => ({ ...p, name: e.target.value }))}
                     required
@@ -129,6 +148,7 @@ const Login = () => {
                   <input
                     type="email"
                     className="form-control"
+                    placeholder="you@example.com"
                     value={registerForm.email}
                     onChange={(e) => setRegisterForm((p) => ({ ...p, email: e.target.value }))}
                     required
@@ -139,24 +159,25 @@ const Login = () => {
                   <input
                     type="password"
                     className="form-control"
+                    placeholder="Min 8 chars, A-Z, a-z, 0-9"
                     value={registerForm.password}
                     onChange={(e) => setRegisterForm((p) => ({ ...p, password: e.target.value }))}
                     required
                   />
-                  <div className="form-text">8+ chars, 1 uppercase, 1 lowercase, 1 number.</div>
                 </div>
-                <div className="mb-3">
+                <div className="mb-4">
                   <label className="form-label">Confirm Password</label>
                   <input
                     type="password"
                     className="form-control"
+                    placeholder="Repeat password"
                     value={registerForm.confirm}
                     onChange={(e) => setRegisterForm((p) => ({ ...p, confirm: e.target.value }))}
                     required
                   />
                 </div>
-                <button className="btn btn-primary w-100" type="submit" disabled={loading}>
-                  {loading ? 'Registering...' : 'Register'}
+                <button className="btn btn-primary w-100 py-2" type="submit" disabled={loading}>
+                  {loading ? 'Creating account…' : 'Create Account →'}
                 </button>
               </form>
             </div>
@@ -170,9 +191,9 @@ const Login = () => {
         )}
 
         <div className="text-center mt-4 footer-credit">
-          <div className="fw-semibold">Developed by: Pratham</div>
+          <span>Developed with ❤️ by <strong>Pratham</strong> · </span>
           <a href="https://github.com/Pratham2511" target="_blank" rel="noreferrer">
-            https://github.com/Pratham2511
+            github.com/Pratham2511
           </a>
         </div>
       </div>

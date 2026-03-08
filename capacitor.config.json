@@ -1,0 +1,9 @@
+{
+  "appId": "com.khatawali.app",
+  "appName": "Khatawali",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": true,
+    "minWebViewVersion": 122
+  }
+}

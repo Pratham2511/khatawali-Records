@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 
 const ExpenseTable = ({ expenses, onEdit, onDelete, loading }) => {
   return (
-    <div className="card p-3">
+    <div className="card p-3 section-card">
       <div className="form-section-title">Expense Table</div>
       <div className="table-responsive">
         <table className="table align-middle">
@@ -34,7 +34,7 @@ const ExpenseTable = ({ expenses, onEdit, onDelete, loading }) => {
                 <td>{exp.date ? format(new Date(exp.date), 'yyyy-MM-dd') : '-'}</td>
                 <td>{exp.biller_name}</td>
                 <td>
-                  <span className="badge bg-light text-dark">{exp.category}</span>
+                  <span className={`badge cat-${exp.category}`}>{exp.category}</span>
                 </td>
                 <td>{exp.description || '-'}</td>
                 <td className="text-end fw-semibold">₹ {Number(exp.amount || 0).toLocaleString()}</td>

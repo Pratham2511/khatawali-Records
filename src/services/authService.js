@@ -26,11 +26,29 @@ export const fetchProfile = async () => {
 
   const { data, error: profileError } = await supabase
     .from('user_profiles')
-    .select('id, name, email, created_at')
-    .eq('id', user.id)
-    .single();
+    .select('id, user_id, name, email, created_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
 
-  return { data, error: profileError };
+  if (profileError) {
+    return { data: null, error: profileError };
+  }
+
+  if (!data) {
+    // Seed a row if missing to avoid 406 single() errors
+    const { data: inserted, error: insertError } = await supabase
+      .from('user_profiles')
+      .upsert(
+        { user_id: user.id, name: user.user_metadata?.name || '', email: user.email },
+        { onConflict: 'user_id' }
+      )
+      .select('id, user_id, name, email, created_at')
+      .single();
+
+    return { data: inserted, error: insertError };
+  }
+
+  return { data, error: null };
 };
 
 export const updateProfile = async ({ name }) => {
@@ -42,8 +60,8 @@ export const updateProfile = async ({ name }) => {
 
   const { data, error: profileError } = await supabase
     .from('user_profiles')
-    .upsert({ id: user.id, name })
-    .select()
+    .upsert({ user_id: user.id, name, email: user.email }, { onConflict: 'user_id' })
+    .select('id, user_id, name, email, created_at')
     .single();
 
   return { data, error: profileError };

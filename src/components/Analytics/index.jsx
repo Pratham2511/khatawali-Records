@@ -41,7 +41,7 @@ const Analytics = ({ expenses, year }) => {
     datasets: [
       {
         data: categories.map((c) => summary.totalsByCategory[c]),
-        backgroundColor: ['#275efe', '#1e40af', '#10b981', '#94a3b8']
+        backgroundColor: ['#0f6b4a', '#2fb27f', '#7dd9ad', '#c5e8d6']
       }
     ]
   };
@@ -52,7 +52,7 @@ const Analytics = ({ expenses, year }) => {
       {
         label: 'Monthly Spend',
         data: summary.totalsByMonth,
-        backgroundColor: '#275efe'
+        backgroundColor: '#1b8e5a'
       }
     ]
   };
@@ -62,9 +62,9 @@ const Analytics = ({ expenses, year }) => {
       <div className="form-section-title">Analytics ({year || 'All years'})</div>
       <div className="row g-3">
         <div className="col-md-4">
-          <div className="p-3 bg-light rounded">
-            <div className="text-muted">Total Spending</div>
-            <div className="fs-3 fw-bold text-primary">₹ {summary.totalSpent.toLocaleString()}</div>
+          <div className="stat-box">
+            <div className="stat-label">Total Spending</div>
+            <div className="stat-value">₹ {summary.totalSpent.toLocaleString()}</div>
           </div>
           <ul className="list-group list-group-flush mt-3">
             {categories.map((c) => (

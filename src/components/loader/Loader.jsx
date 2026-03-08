@@ -1,8 +1,9 @@
 import React from 'react';
 import './loader.css';
 
-const Loader = () => (
-  <div className="loader-container" role="status" aria-live="polite" aria-label="Loading">
+const Loader = ({ overlay = true }) => (
+  <div className={overlay ? 'loader-shell' : ''} role="status" aria-live="polite" aria-label="Loading">
+  <div className="loader-container">
     <div className="book">
       <div className="inner">
         <div className="left" />
@@ -16,6 +17,7 @@ const Loader = () => (
       </ul>
     </div>
     <span className="sr-only">Loading</span>
+  </div>
   </div>
 );
 
