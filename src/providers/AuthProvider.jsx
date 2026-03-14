@@ -95,17 +95,32 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const loadSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      if (!error) {
-        await applySession(data.session);
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (!error) {
+          await applySession(data.session);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch (sessionError) {
+        // eslint-disable-next-line no-console
+        console.error('Unable to initialize Supabase session', sessionError);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-      void applySession(newSession);
+      void applySession(newSession).catch((authStateError) => {
+        // eslint-disable-next-line no-console
+        console.error('Supabase auth state change failed', authStateError);
+      });
     });
 
     return () => listener.subscription.unsubscribe();
