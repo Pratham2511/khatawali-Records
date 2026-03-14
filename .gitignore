@@ -6,3 +6,5 @@ npm-debug.log*
 pnpm-lock.yaml
 yarn.lock
 env Details.txt
+.idea/
+android/.idea/

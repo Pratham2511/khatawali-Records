@@ -1,7 +1,7 @@
 import React from 'react';
 import './loader.css';
 
-const Loader = ({ overlay = true }) => (
+const Loader = ({ overlay = false }) => (
   <div className={overlay ? 'loader-shell' : ''} role="status" aria-live="polite" aria-label="Loading">
   <div className="loader-container">
     <div className="book">

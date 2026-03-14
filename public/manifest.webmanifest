@@ -1,12 +1,12 @@
 {
-  "name": "Khatawali — Personal Expense Ledger",
+  "name": "Khatawali Ledger",
   "short_name": "Khatawali",
-  "description": "Track expenses, analytics, and profile with Supabase backend.",
+  "description": "Person-wise ledger with Google sign-in, bilingual UI, and statement export.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F8FAFC",
-  "theme_color": "#275EFE",
+  "background_color": "#e7ecee",
+  "theme_color": "#0c6f59",
   "icons": [
     {
       "src": "/icon-192.png",

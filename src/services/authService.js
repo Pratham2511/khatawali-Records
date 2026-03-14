@@ -1,18 +1,16 @@
 import { supabase } from './supabaseClient';
 
-export const signUp = async ({ name, email, password }) => {
-  return supabase.auth.signUp({
-    email,
-    password,
+export const signInWithGoogle = async () => {
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
     options: {
-      data: { name },
-      emailRedirectTo: `${window.location.origin}/`
+      redirectTo: `${window.location.origin}/dashboard`,
+      queryParams: {
+        prompt: 'select_account',
+        access_type: 'offline'
+      }
     }
   });
-};
-
-export const signIn = async ({ email, password }) => {
-  return supabase.auth.signInWithPassword({ email, password });
 };
 
 export const signOut = async () => supabase.auth.signOut();

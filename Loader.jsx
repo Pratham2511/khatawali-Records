@@ -1,13 +1,23 @@
-div(class='book')
-  div(class='inner')
-    div(class='left')
-    div(class='middle')
-    div(class='right')
-    - var n = 0;
-  ul
-    while n < 18
-      li
-      - n++
-      
-a(class='dribbble' href='https://dribbble.com/shots/7199149-Book-Loader' target='_blank')
-  img(src='https://dribbble.com/assets/logo-small-2x-9fe74d2ad7b25fba0f50168523c15fda4c35534f9ea0b1011179275383035439.png')
+import React from 'react';
+import './loader.css';
+
+const Loader = () => {
+  return (
+    <div className="loader-root" role="status" aria-live="polite" aria-label="Loading">
+      <div className="book">
+        <div className="inner">
+          <div className="left" />
+          <div className="middle" />
+          <div className="right" />
+        </div>
+        <ul>
+          {Array.from({ length: 18 }).map((_, index) => (
+            <li key={index} style={{ '--i': index }} />
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export default Loader;

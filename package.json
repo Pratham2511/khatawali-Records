@@ -9,21 +9,26 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^6.0.1",
     "@capacitor/core": "^6.1.2",
+    "@capacitor/preferences": "^6.0.4",
+    "@supabase/supabase-js": "^2.45.0",
     "bootstrap": "^5.3.3",
+    "bootstrap-icons": "^1.13.1",
     "chart.js": "^4.4.2",
     "date-fns": "^3.6.0",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "papaparse": "^5.4.1",
-    "xlsx": "^0.18.5",
     "react": "^18.3.1",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.22.3",
-    "@supabase/supabase-js": "^2.45.0"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.1.2",
     "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
     "@vitejs/plugin-react": "^4.2.1",
     "vite": "^5.2.0"
   }
