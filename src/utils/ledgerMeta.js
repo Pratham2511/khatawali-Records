@@ -6,7 +6,6 @@ export const LEDGER_CATEGORIES = [
   'Shelke Pipeline',
   'Pansare Pipeline',
   'Korde Pipeline',
-  'Tractor',
   'Anil',
   'Pappu',
   'Salim',
