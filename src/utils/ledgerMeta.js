@@ -1,20 +1,20 @@
 export const LEDGER_CATEGORIES = [
   'khat',
-  'tractor',
-  'शेळके पाईप लाईन',
-  'पानसरे पाईप लाईन',
-  'कोरडे पाईप लाईन',
-  'ट्रैक्टर',
-  'अनिल',
-  'पप्पु',
-  'सलिम',
-  'शेणखते',
-  'रासायनिक खते',
-  'विजय',
-  'भावना',
-  'उत्तम',
+  'Tractor',
+  'Maintenance',
   'society',
-  'maintenance'
+  'Shelke Pipeline',
+  'Pansare Pipeline',
+  'Korde Pipeline',
+  'Tractor',
+  'Anil',
+  'Pappu',
+  'Salim',
+  'Shenkhate',
+  'Sanket borachate Fertilizers',
+  'Vijay',
+  'Bhavana',
+  'Uttam'
 ];
 
 export const PERSON_TYPES = ['customer', 'supplier', 'other'];
@@ -56,12 +56,29 @@ export const normalizeEntryType = (value) => {
 };
 
 export const normalizeCategoryForStorage = (displayCategory) => {
-  const lower = (displayCategory || '').trim().toLowerCase();
+  const normalized = (displayCategory || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
-  if (lower === 'society') return 'society';
-  if (lower === 'maintenance') return 'maintenance';
-  if (lower.includes('pipe') || lower.includes('pipeline') || lower.includes('पाईप')) return 'pipeline';
-  if (lower.includes('khat') || lower.includes('tractor') || lower.includes('ट्रैक्टर') || lower.includes('खते')) {
+  if (normalized === 'society') return 'society';
+  if (normalized === 'maintenance') return 'maintenance';
+
+  if (normalized.includes('pipe') || normalized.includes('pipeline')) return 'pipeline';
+
+  const khatLike = [
+    'khat',
+    'tractor',
+    'anil',
+    'pappu',
+    'salim',
+    'shenkhate',
+    'sanket borachate fertilizers',
+    'vijay',
+    'bhavana',
+    'uttam',
+    'fertilizer',
+    'fertilizers'
+  ];
+
+  if (khatLike.some((keyword) => normalized.includes(keyword))) {
     return 'khat';
   }
 
