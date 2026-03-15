@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
@@ -64,6 +64,7 @@ const PersonLedger = () => {
   const [amountInput, setAmountInput] = useState('');
   const [activeEntryMenuId, setActiveEntryMenuId] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
+  const entryStreamEndRef = useRef(null);
   const [transferForm, setTransferForm] = useState(() => ({
     targetName: '',
     amount: '',
@@ -172,7 +173,7 @@ const PersonLedger = () => {
       };
     });
 
-    return withRunning.reverse();
+    return withRunning;
   }, [decoratedEntries]);
 
   const totals = useMemo(() => {
@@ -187,7 +188,7 @@ const PersonLedger = () => {
   }, [entriesWithClosing]);
 
   const balance = totals.credit - totals.debit;
-  const latestEntry = entriesWithClosing[0];
+  const latestEntry = entriesWithClosing[entriesWithClosing.length - 1];
   const fallbackPerson = allPeople.find((person) => person.name === personName);
   const primaryPhone = latestEntry?.phone || fallbackPerson?.phone || '';
   const maskedPhone = getMaskedPhone(primaryPhone);
@@ -218,6 +219,11 @@ const PersonLedger = () => {
       return haystack.includes(query);
     });
   }, [entriesWithClosing, entrySearch, showOnlyToday]);
+
+  useEffect(() => {
+    if (loading) return;
+    entryStreamEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+  }, [filteredEntries.length, loading]);
 
   const transferCandidates = useMemo(() => {
     const query = transferSearch.trim().toLowerCase();
@@ -732,6 +738,7 @@ const PersonLedger = () => {
                   </div>
                 </article>
               ))}
+              <div ref={entryStreamEndRef}></div>
             </div>
           </>
         )}

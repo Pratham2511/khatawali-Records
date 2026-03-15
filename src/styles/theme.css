@@ -1319,7 +1319,7 @@ a {
 .person-toolbar-btn {
   border: 0;
   border-radius: 10px;
-  min-height: 56px;
+  min-height: 50px;
   background: transparent;
   color: #eaf6ee;
   display: flex;
@@ -1332,7 +1332,7 @@ a {
 }
 
 .person-toolbar-btn i {
-  font-size: 1.55rem;
+  font-size: 1.25rem;
 }
 
 .person-toolbar-btn.active {
@@ -1379,13 +1379,13 @@ a {
 }
 
 .person-day-summary strong {
-  font-size: 2rem;
+  font-size: 1.45rem;
   font-weight: 600;
   line-height: 1;
 }
 
 .person-day-summary span {
-  font-size: 1.3rem;
+  font-size: 0.98rem;
   color: #70876f;
 }
 
@@ -1421,7 +1421,7 @@ a {
 
 .entry-head-row h4 {
   margin: 0;
-  font-size: 1.95rem;
+  font-size: 1.2rem;
   font-weight: 600;
 }
 
@@ -1466,14 +1466,14 @@ a {
 
 .ref-amount {
   margin-top: 2px;
-  font-size: 3.2rem;
+  font-size: clamp(1.55rem, 1.38rem + 1.25vw, 2rem);
   line-height: 1;
 }
 
 .ref-closing-line {
   margin-top: 2px;
   text-align: right;
-  font-size: 1.4rem;
+  font-size: 0.94rem;
 }
 
 .ref-time-line {
@@ -1482,7 +1482,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 1.3rem;
+  font-size: 0.86rem;
   color: #43395a;
 }
 
@@ -1490,17 +1490,17 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 36px;
-  height: 24px;
+  min-width: 32px;
+  height: 22px;
   border-radius: 14px;
   border: 1px solid #d9dccf;
   background: #f8f8ef;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   color: #676a56;
 }
 
 .ref-totals-strip {
-  font-size: 2.6rem;
+  font-size: 1.2rem;
   line-height: 1;
   margin-bottom: 4px;
 }
@@ -1534,7 +1534,7 @@ a {
 }
 
 .ref-collect-card strong {
-  font-size: 2rem;
+  font-size: 1.45rem;
 }
 
 .ref-action-row {
@@ -1615,11 +1615,11 @@ a {
 
 @media (max-width: 760px) {
   .person-day-summary strong {
-    font-size: 2.2rem;
+    font-size: 1.35rem;
   }
 
   .person-day-summary span {
-    font-size: 1.45rem;
+    font-size: 0.95rem;
   }
 
   .ref-entry-card {
@@ -1627,16 +1627,16 @@ a {
   }
 
   .ref-amount {
-    font-size: 2.2rem;
+    font-size: 1.65rem;
   }
 
   .ref-closing-line,
   .ref-time-line {
-    font-size: 1rem;
+    font-size: 0.82rem;
   }
 
   .ref-totals-strip {
-    font-size: 1.7rem;
+    font-size: 1.08rem;
   }
 }
 
