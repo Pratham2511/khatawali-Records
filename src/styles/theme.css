@@ -564,6 +564,53 @@ a {
   font-weight: 800;
 }
 
+.developer-support-modal {
+  position: relative;
+  width: min(620px, 100%);
+  border-radius: 18px;
+  border: 1px solid #d4ded5;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbf8 100%);
+}
+
+.developer-support-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: #eef4ef;
+  color: #294533;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.developer-support-modal h3 {
+  text-align: left;
+  padding-right: 34px;
+  margin-bottom: 8px;
+  color: #264333;
+}
+
+.developer-support-copy {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.55;
+  color: #2f4136;
+}
+
+.developer-support-signoff {
+  margin: 10px 0 0;
+  color: #2f6e45;
+  font-weight: 700;
+}
+
+.developer-support-actions {
+  grid-template-columns: 1fr;
+}
+
 .ledger-form .form-control,
 .ledger-form .form-select {
   min-height: 42px;

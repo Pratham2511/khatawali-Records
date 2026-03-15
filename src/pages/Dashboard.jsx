@@ -111,6 +111,7 @@ const inRange = (entryDate, mode, from, to) => {
 };
 
 const formatAmount = (value) => `₹ ${Number(value || 0).toLocaleString('en-IN')}`;
+const supportPopupSeenKey = (userId) => `khatawali.dev.support.popup.dismissed.${userId}`;
 
 const Dashboard = () => {
   const { user, biometricEnabled } = useAuth();
@@ -142,6 +143,7 @@ const Dashboard = () => {
   const [showStatementModal, setShowStatementModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showQuickProfileModal, setShowQuickProfileModal] = useState(false);
+  const [showDeveloperSupportPopup, setShowDeveloperSupportPopup] = useState(false);
   const [hideTotal, setHideTotal] = useState(false);
   const [quickProfile, setQuickProfile] = useState(() => createProfileDraft(loadAppConfig().profile));
   const [quickProfileError, setQuickProfileError] = useState('');
@@ -196,6 +198,20 @@ const Dashboard = () => {
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setShowDeveloperSupportPopup(false);
+      return;
+    }
+
+    try {
+      const dismissed = window.localStorage.getItem(supportPopupSeenKey(user.id)) === 'true';
+      setShowDeveloperSupportPopup(!dismissed);
+    } catch {
+      setShowDeveloperSupportPopup(true);
+    }
+  }, [user?.id]);
 
   const decoratedExpenses = useMemo(() => {
     return expenses.map(decorateExpense);
@@ -604,6 +620,18 @@ const Dashboard = () => {
   const closeQuickProfileModal = () => {
     if (quickProfileSaving) return;
     setShowQuickProfileModal(false);
+  };
+
+  const closeDeveloperSupportPopup = () => {
+    setShowDeveloperSupportPopup(false);
+
+    if (!user?.id) return;
+
+    try {
+      window.localStorage.setItem(supportPopupSeenKey(user.id), 'true');
+    } catch {
+      // Ignore storage write issues in restricted browser environments.
+    }
   };
 
   const handleQuickProfileUpload = async (field, file) => {
@@ -1149,6 +1177,26 @@ const Dashboard = () => {
               </button>
               <button type="button" className="btn btn-primary" onClick={saveQuickProfile} disabled={quickProfileSaving}>
                 {quickProfileSaving ? t('loading') : t('save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeveloperSupportPopup && (
+        <div className="ledger-modal-overlay" onClick={closeDeveloperSupportPopup}>
+          <div className="ledger-modal developer-support-modal" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="developer-support-close" aria-label={t('close')} onClick={closeDeveloperSupportPopup}>
+              <i className="bi bi-x-lg"></i>
+            </button>
+
+            <h3>{t('developerSupportTitle')}</h3>
+            <p className="developer-support-copy">{t('developerSupportMessage')}</p>
+            <p className="developer-support-signoff">{t('developerSupportSignoff')}</p>
+
+            <div className="modal-actions developer-support-actions">
+              <button type="button" className="btn btn-primary" onClick={closeDeveloperSupportPopup}>
+                {t('close')}
               </button>
             </div>
           </div>

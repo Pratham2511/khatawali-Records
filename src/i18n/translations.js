@@ -170,7 +170,11 @@ export const translations = {
     transferTo: 'Transfer to',
     transferFrom: 'Transfer from',
     dashboard: 'Dashboard',
-    noTransferPeople: 'No people available for transfer.'
+    noTransferPeople: 'No people available for transfer.',
+    developerSupportTitle: 'Developer Support',
+    developerSupportMessage:
+      'This application was developed by Pratham P. Pansare. A lot of time and effort has gone into building this project, and the developer has not received payment for this work. If you find this application useful, a small donation to support the developer would be greatly appreciated.',
+    developerSupportSignoff: 'Thank you for your support.'
   },
   mr: {
     appName: 'खातावली',
@@ -341,6 +345,10 @@ export const translations = {
     transferTo: 'ट्रान्सफर ते',
     transferFrom: 'ट्रान्सफर कडून',
     dashboard: 'डॅशबोर्ड',
-    noTransferPeople: 'ट्रान्सफरसाठी व्यक्ती उपलब्ध नाही.'
+    noTransferPeople: 'ट्रान्सफरसाठी व्यक्ती उपलब्ध नाही.',
+    developerSupportTitle: 'डेव्हलपर सपोर्ट',
+    developerSupportMessage:
+      'हे अॅप Pratham P. Pansare यांनी तयार केले आहे. हे अॅप बनवण्यासाठी खूप वेळ आणि मेहनत घेतली गेली आहे आणि या कामासाठी डेव्हलपरला कोणतेही पेमेंट मिळालेले नाही. तुम्हाला हे अॅप उपयुक्त वाटत असेल, तर डेव्हलपरला सपोर्ट करण्यासाठी छोटीशी मदत मनापासून स्वागतार्ह आहे.',
+    developerSupportSignoff: 'तुमच्या सपोर्टबद्दल धन्यवाद.'
   }
 };

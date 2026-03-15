@@ -10,7 +10,7 @@ export const isNative = () => Capacitor.isNativePlatform();
 export const getBiometricEnabled = async (userId) => {
   if (!userId || !isNative()) return false;
   const { value } = await Preferences.get({ key: enabledKey(userId) });
-  if (value === null) return true;
+  if (value === null) return false;
   return value === 'true';
 };
 
