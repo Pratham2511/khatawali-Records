@@ -111,10 +111,13 @@ const inRange = (entryDate, mode, from, to) => {
 };
 
 const formatAmount = (value) => `₹ ${Number(value || 0).toLocaleString('en-IN')}`;
-const supportPopupSeenKey = (userId) => `khatawali.dev.support.popup.dismissed.${userId}`;
+const addPersonDraftKey = (userId) => `khatawali.add.person.draft.${userId}`;
+const buildPersonCategoryKey = (name, category) => `${String(name || '').trim().toLowerCase()}::${String(category || '').trim().toLowerCase()}`;
+const resolveSupportSessionToken = (session) => session?.refresh_token || session?.access_token || '';
+const supportPopupSeenKey = (userId, sessionToken) => `khatawali.dev.support.popup.dismissed.${userId}.${sessionToken}`;
 
 const Dashboard = () => {
-  const { user, biometricEnabled } = useAuth();
+  const { user, session, biometricEnabled } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
@@ -145,6 +148,7 @@ const Dashboard = () => {
   const [showQuickProfileModal, setShowQuickProfileModal] = useState(false);
   const [showDeveloperSupportPopup, setShowDeveloperSupportPopup] = useState(false);
   const [hideTotal, setHideTotal] = useState(false);
+  const [contactPickerInProgress, setContactPickerInProgress] = useState(false);
   const [quickProfile, setQuickProfile] = useState(() => createProfileDraft(loadAppConfig().profile));
   const [quickProfileError, setQuickProfileError] = useState('');
   const [quickProfileSaving, setQuickProfileSaving] = useState(false);
@@ -155,6 +159,7 @@ const Dashboard = () => {
   });
 
   const defaultCategory = categoryOptions[0] || LEDGER_CATEGORIES[0];
+  const supportSessionToken = resolveSupportSessionToken(session);
 
   const [entryForm, setEntryForm] = useState(() => createInitialEntry(defaultCategory));
   const [editingExpenseId, setEditingExpenseId] = useState(null);
@@ -205,13 +210,43 @@ const Dashboard = () => {
       return;
     }
 
+    if (!supportSessionToken) {
+      setShowDeveloperSupportPopup(true);
+      return;
+    }
+
     try {
-      const dismissed = window.localStorage.getItem(supportPopupSeenKey(user.id)) === 'true';
+      const dismissed = window.localStorage.getItem(supportPopupSeenKey(user.id, supportSessionToken)) === 'true';
       setShowDeveloperSupportPopup(!dismissed);
     } catch {
       setShowDeveloperSupportPopup(true);
     }
-  }, [user?.id]);
+  }, [supportSessionToken, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const key = addPersonDraftKey(user.id);
+
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+
+      setEntryForm((prev) => ({
+        ...prev,
+        ...parsed,
+        category: parsed.category || prev.category || defaultCategory
+      }));
+      setShowAddModal(true);
+    } catch {
+      // Ignore malformed draft payloads.
+    } finally {
+      window.sessionStorage.removeItem(key);
+    }
+  }, [defaultCategory, user?.id]);
 
   const decoratedExpenses = useMemo(() => {
     return expenses.map(decorateExpense);
@@ -240,8 +275,13 @@ const Dashboard = () => {
 
     searchFilteredExpenses.forEach((expense) => {
       const name = (expense.biller_name || '').trim() || 'Unknown';
-      const existing = map.get(name) || {
+      const category = String(expense.displayCategory || defaultCategory || LEDGER_CATEGORIES[0]).trim() || LEDGER_CATEGORIES[0];
+      const personKey = buildPersonCategoryKey(name, category);
+
+      const existing = map.get(personKey) || {
+        key: personKey,
         name,
+        category,
         phone: expense.phone,
         credit: 0,
         debit: 0,
@@ -267,15 +307,17 @@ const Dashboard = () => {
         }
       }
 
-      map.set(name, existing);
+      map.set(personKey, existing);
     });
 
     return Array.from(map.values()).sort((a, b) => {
       const bTime = b.lastTransactionAt ? new Date(b.lastTransactionAt).getTime() : 0;
       const aTime = a.lastTransactionAt ? new Date(a.lastTransactionAt).getTime() : 0;
-      return bTime - aTime;
+      if (bTime !== aTime) return bTime - aTime;
+      if (a.name !== b.name) return a.name.localeCompare(b.name);
+      return a.category.localeCompare(b.category);
     });
-  }, [searchFilteredExpenses]);
+  }, [defaultCategory, searchFilteredExpenses]);
 
   const totals = useMemo(() => {
     return groupedPeople.reduce(
@@ -606,8 +648,8 @@ const Dashboard = () => {
     setRangeFilter((prev) => ({ ...prev, mode }));
   };
 
-  const openPersonLedger = (personName) => {
-    navigate(`/person/${encodeURIComponent(personName)}`);
+  const openPersonLedger = (person) => {
+    navigate(`/person/${encodeURIComponent(person.name)}/${encodeURIComponent(person.category)}`);
   };
 
   const openQuickProfileModal = () => {
@@ -625,10 +667,10 @@ const Dashboard = () => {
   const closeDeveloperSupportPopup = () => {
     setShowDeveloperSupportPopup(false);
 
-    if (!user?.id) return;
+    if (!user?.id || !supportSessionToken) return;
 
     try {
-      window.localStorage.setItem(supportPopupSeenKey(user.id), 'true');
+      window.localStorage.setItem(supportPopupSeenKey(user.id, supportSessionToken), 'true');
     } catch {
       // Ignore storage write issues in restricted browser environments.
     }
@@ -673,10 +715,20 @@ const Dashboard = () => {
   };
 
   const handlePickContact = async () => {
+    if (!isContactPickerSupported()) {
+      setError('Contact picker is available only on mobile app.');
+      return;
+    }
+
+    const draftKey = user?.id ? addPersonDraftKey(user.id) : '';
+
+    setContactPickerInProgress(true);
+    setShowAddModal(true);
+    setError('');
+
     try {
-      if (!isContactPickerSupported()) {
-        setError('Contact picker is available only on mobile app.');
-        return;
+      if (draftKey) {
+        window.sessionStorage.setItem(draftKey, JSON.stringify(entryForm));
       }
 
       const picked = await pickDeviceContact();
@@ -686,8 +738,16 @@ const Dashboard = () => {
         billerName: picked.name || prev.billerName,
         phone: picked.phone || prev.phone
       }));
+      setShowAddModal(true);
     } catch (pickError) {
       setError(pickError.message || 'Unable to pick contact.');
+    } finally {
+      setContactPickerInProgress(false);
+      setShowAddModal(true);
+
+      if (draftKey) {
+        window.sessionStorage.removeItem(draftKey);
+      }
     }
   };
 
@@ -868,22 +928,25 @@ const Dashboard = () => {
           <div className="people-list">
             {groupedPeople.map((person) => (
               <article
-                key={person.name}
+                key={person.key}
                 className="person-row-card clickable-person"
                 role="button"
                 tabIndex={0}
-                onClick={() => openPersonLedger(person.name)}
+                onClick={() => openPersonLedger(person)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
-                    openPersonLedger(person.name);
+                    openPersonLedger(person);
                   }
                 }}
               >
                 <div className="person-avatar">{person.name.slice(0, 1).toUpperCase()}</div>
 
                 <div className="person-main">
-                  <h3>{person.name}</h3>
+                  <h3 className="person-name-with-category">
+                    {person.name}
+                    <span className="person-category-tag"> - {person.category}</span>
+                  </h3>
 
                   <div className="person-amounts">
                     <span className="credit-text">Cr {Number(person.credit || 0).toLocaleString('en-IN')}</span>
@@ -970,7 +1033,7 @@ const Dashboard = () => {
       </section>
 
       {showAddModal && (
-        <div className="ledger-modal-overlay" onClick={closeAddModal}>
+        <div className="ledger-modal-overlay" onClick={() => !contactPickerInProgress && closeAddModal()}>
           <div className="ledger-modal" onClick={(event) => event.stopPropagation()}>
             <h3>{editingExpenseId ? t('editPersonEntry') : t('addNewPerson')}</h3>
 
@@ -985,7 +1048,12 @@ const Dashboard = () => {
                     placeholder={t('personName')}
                     required
                   />
-                  <button type="button" className="btn btn-outline-primary" onClick={() => void handlePickContact()}>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={() => void handlePickContact()}
+                    disabled={contactPickerInProgress}
+                  >
                     <i className="bi bi-person-lines-fill"></i>
                   </button>
                 </div>
@@ -1092,7 +1160,7 @@ const Dashboard = () => {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn btn-outline-secondary" onClick={closeAddModal}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeAddModal} disabled={contactPickerInProgress}>
                   {t('cancel')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>

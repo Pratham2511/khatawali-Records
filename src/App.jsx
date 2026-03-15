@@ -22,6 +22,7 @@ const App = () => {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/person/:personName/:personCategory" element={<PersonLedger />} />
           <Route path="/person/:personName" element={<PersonLedger />} />
           <Route path="/message-customization" element={<MessageCustomization />} />
           <Route path="/change-gmail" element={<ChangeGmailId />} />

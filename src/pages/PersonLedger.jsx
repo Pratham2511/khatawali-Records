@@ -39,9 +39,16 @@ const dayGapFromToday = (value) => {
   return Math.max(0, Math.floor(diff / (24 * 60 * 60 * 1000)));
 };
 
+const normalizeToken = (value) => String(value || '').trim().toLowerCase();
+const buildPersonCategoryKey = (name, category) => `${normalizeToken(name)}::${normalizeToken(category)}`;
+
 const PersonLedger = () => {
-  const { personName: personSlug } = useParams();
+  const { personName: personSlug, personCategory: personCategorySlug } = useParams();
   const personName = decodeURIComponent(personSlug || '');
+  const personCategory = decodeURIComponent(personCategorySlug || '');
+  const normalizedPersonCategory = normalizeToken(personCategory);
+  const personHeading = personCategory ? `${personName} - ${personCategory}` : personName;
+  const currentPersonKey = buildPersonCategoryKey(personName, personCategory);
 
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -68,7 +75,7 @@ const PersonLedger = () => {
   const [editingEntry, setEditingEntry] = useState(null);
   const entryStreamEndRef = useRef(null);
   const [transferForm, setTransferForm] = useState(() => ({
-    targetName: '',
+    targetKey: '',
     amount: '',
     note: '',
     date: new Date().toISOString().slice(0, 10),
@@ -116,10 +123,14 @@ const PersonLedger = () => {
       const name = (item.biller_name || '').trim();
       if (!name) return;
 
-      const existing = mapped.get(name) || {
+      const displayCategory = String(item.displayCategory || 'khat').trim() || 'khat';
+      const personKey = buildPersonCategoryKey(name, displayCategory);
+
+      const existing = mapped.get(personKey) || {
+        key: personKey,
         name,
+        displayCategory,
         phone: '',
-        displayCategory: item.displayCategory || 'khat',
         lastSeenAt: item.created_at || item.date || ''
       };
 
@@ -131,17 +142,22 @@ const PersonLedger = () => {
 
       if (seenAt && (!existing.lastSeenAt || new Date(seenAt).getTime() > new Date(existing.lastSeenAt).getTime())) {
         existing.lastSeenAt = seenAt;
-        existing.displayCategory = item.displayCategory || existing.displayCategory;
+        existing.displayCategory = displayCategory || existing.displayCategory;
 
         if (item.phone) {
           existing.phone = item.phone;
         }
       }
 
-      mapped.set(name, existing);
+      mapped.set(personKey, existing);
     });
 
-    setAllPeople(Array.from(mapped.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    setAllPeople(
+      Array.from(mapped.values()).sort((a, b) => {
+        if (a.name !== b.name) return a.name.localeCompare(b.name);
+        return a.displayCategory.localeCompare(b.displayCategory);
+      })
+    );
   };
 
   useEffect(() => {
@@ -155,8 +171,14 @@ const PersonLedger = () => {
   }, [user?.id]);
 
   const decoratedEntries = useMemo(() => {
-    return entries.map(decorateExpense);
-  }, [entries]);
+    const mapped = entries.map(decorateExpense);
+
+    if (!normalizedPersonCategory) {
+      return mapped;
+    }
+
+    return mapped.filter((entry) => normalizeToken(entry.displayCategory) === normalizedPersonCategory);
+  }, [entries, normalizedPersonCategory]);
 
   const entriesWithClosing = useMemo(() => {
     const ascending = [...decoratedEntries].sort((a, b) => {
@@ -191,7 +213,12 @@ const PersonLedger = () => {
 
   const balance = totals.credit - totals.debit;
   const latestEntry = entriesWithClosing[entriesWithClosing.length - 1];
-  const fallbackPerson = allPeople.find((person) => person.name === personName);
+  const fallbackPerson = allPeople.find((person) => {
+    if (normalizedPersonCategory) {
+      return person.key === currentPersonKey;
+    }
+    return person.name === personName;
+  });
   const primaryPhone = latestEntry?.phone || fallbackPerson?.phone || '';
   const maskedPhone = getMaskedPhone(primaryPhone);
   const daysPassed = dayGapFromToday(latestEntry?.date || latestEntry?.created_at);
@@ -231,16 +258,18 @@ const PersonLedger = () => {
     const query = transferSearch.trim().toLowerCase();
 
     return allPeople.filter((person) => {
-      if (person.name === personName) return false;
+      const isCurrentPerson = normalizedPersonCategory ? person.key === currentPersonKey : person.name === personName;
+      if (isCurrentPerson) return false;
       if (!query) return true;
-      return person.name.toLowerCase().includes(query) || String(person.phone || '').toLowerCase().includes(query);
+      const haystack = `${person.name} ${person.displayCategory} ${String(person.phone || '')}`.toLowerCase();
+      return haystack.includes(query);
     });
-  }, [allPeople, personName, transferSearch]);
+  }, [allPeople, currentPersonKey, normalizedPersonCategory, personName, transferSearch]);
 
   const selectedTransferPerson = useMemo(() => {
-    if (!transferForm.targetName) return null;
-    return allPeople.find((person) => person.name === transferForm.targetName) || null;
-  }, [allPeople, transferForm.targetName]);
+    if (!transferForm.targetKey) return null;
+    return allPeople.find((person) => person.key === transferForm.targetKey) || null;
+  }, [allPeople, transferForm.targetKey]);
 
   const creditPercent = useMemo(() => {
     const total = totals.credit + totals.debit;
@@ -279,7 +308,7 @@ const PersonLedger = () => {
     const payload = buildExpensePayload({
       billerName: personName,
       amount,
-      displayCategory: editingEntry?.displayCategory || latestEntry?.displayCategory || defaultCategory,
+      displayCategory: editingEntry?.displayCategory || personCategory || latestEntry?.displayCategory || defaultCategory,
       entryType: editingEntry?.entryType || entryMode,
       note: editingEntry?.cleanDescription || '',
       phone: editingEntry?.phone || primaryPhone,
@@ -466,7 +495,7 @@ const PersonLedger = () => {
     setMessage('');
     setTransferSearch('');
     setTransferForm({
-      targetName: '',
+      targetKey: '',
       amount: '',
       note: '',
       date: new Date().toISOString().slice(0, 10),
@@ -486,7 +515,7 @@ const PersonLedger = () => {
       return;
     }
 
-    if (!transferForm.targetName) {
+    if (!transferForm.targetKey || !selectedTransferPerson) {
       setError(t('selectPersonFirst'));
       return;
     }
@@ -507,25 +536,27 @@ const PersonLedger = () => {
 
     const transferStamp = `${transferForm.date || new Date().toISOString().slice(0, 10)} ${transferForm.time || ''}`.trim();
     const transferNote = transferForm.note.trim();
+    const transferTargetLabel = `${selectedTransferPerson.name} (${selectedTransferPerson.displayCategory})`;
+    const transferSourceLabel = personCategory ? `${personName} (${personCategory})` : personName;
 
     const sourcePayload = buildExpensePayload({
       billerName: personName,
       amount: transferAmount,
-      displayCategory: latestEntry?.displayCategory || defaultCategory,
+      displayCategory: personCategory || latestEntry?.displayCategory || defaultCategory,
       entryType: 'debit',
-      note: `${t('transferTo')} ${transferForm.targetName}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
+      note: `${t('transferTo')} ${transferTargetLabel}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
       phone: primaryPhone,
       date: transferForm.date,
       receipt: null
     });
 
     const targetPayload = buildExpensePayload({
-      billerName: transferForm.targetName,
+      billerName: selectedTransferPerson.name,
       amount: transferAmount,
-      displayCategory: selectedTransferPerson?.displayCategory || latestEntry?.displayCategory || defaultCategory,
+      displayCategory: selectedTransferPerson.displayCategory || latestEntry?.displayCategory || defaultCategory,
       entryType: 'credit',
-      note: `${t('transferFrom')} ${personName}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
-      phone: selectedTransferPerson?.phone || '',
+      note: `${t('transferFrom')} ${transferSourceLabel}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
+      phone: selectedTransferPerson.phone || '',
       date: transferForm.date,
       receipt: null
     });
@@ -582,7 +613,7 @@ const PersonLedger = () => {
           <div className="person-head-avatar">{personName.slice(0, 1).toUpperCase()}</div>
 
           <div className="person-title-wrap">
-            <h1>{personName}</h1>
+            <h1>{personHeading}</h1>
             <p>
               {primaryPhone || t('mobileNumber')}
               {primaryPhone && <span className="person-masked-phone">&nbsp;&nbsp;{maskedPhone}</span>}
@@ -822,14 +853,16 @@ const PersonLedger = () => {
               ) : (
                 transferCandidates.map((person) => (
                   <button
-                    key={person.name}
+                    key={person.key}
                     type="button"
-                    className={`transfer-person-item ${transferForm.targetName === person.name ? 'active' : ''}`}
-                    onClick={() => setTransferForm((prev) => ({ ...prev, targetName: person.name }))}
+                    className={`transfer-person-item ${transferForm.targetKey === person.key ? 'active' : ''}`}
+                    onClick={() => setTransferForm((prev) => ({ ...prev, targetKey: person.key }))}
                   >
                     <span className="transfer-avatar">{person.name.slice(0, 1).toUpperCase()}</span>
                     <span>
-                      <strong>{person.name}</strong>
+                      <strong>
+                        {person.name} - {person.displayCategory}
+                      </strong>
                       {person.phone && <small>{person.phone}</small>}
                     </span>
                   </button>

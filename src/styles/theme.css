@@ -358,6 +358,19 @@ a {
   color: #17271f;
 }
 
+.person-name-with-category {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.person-category-tag {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #3f5f4b;
+}
+
 .person-amounts {
   display: flex;
   gap: 9px;
