@@ -1,5 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { supabase } from '../services/supabaseClient';
+import { completeOAuthFromCallbackUrl, isNativeOAuthCallbackUrl } from '../services/authService';
 import Loader from '../components/loader/Loader';
 import {
   ensureBiometricUnlock,
@@ -92,6 +95,53 @@ export const AuthProvider = ({ children }) => {
       await unlockWithBiometric();
     }
   };
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return undefined;
+
+    let isDisposed = false;
+    let lastHandledUrl = '';
+    let listenerHandle;
+
+    const handleAuthUrl = async (url) => {
+      if (!isNativeOAuthCallbackUrl(url) || url === lastHandledUrl) {
+        return;
+      }
+
+      lastHandledUrl = url;
+      const { error } = await completeOAuthFromCallbackUrl(url);
+
+      if (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to complete mobile OAuth callback', error);
+      }
+    };
+
+    const initializeNativeAuthCallback = async () => {
+      try {
+        listenerHandle = await CapacitorApp.addListener('appUrlOpen', ({ url }) => {
+          void handleAuthUrl(url);
+        });
+
+        const launchData = await CapacitorApp.getLaunchUrl();
+        if (!isDisposed) {
+          await handleAuthUrl(launchData?.url);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Unable to initialize mobile OAuth listener', error);
+      }
+    };
+
+    void initializeNativeAuthCallback();
+
+    return () => {
+      isDisposed = true;
+      if (listenerHandle) {
+        void listenerHandle.remove();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const loadSession = async () => {
