@@ -171,6 +171,8 @@ export const translations = {
     transferFrom: 'Transfer from',
     dashboard: 'Dashboard',
     noTransferPeople: 'No people available for transfer.',
+    pickContact: 'Pick Contact',
+    noContactsFound: 'No contacts found on this device.',
     developerSupportTitle: 'Developer Support',
     developerSupportMessage:
       'This application was developed by Pratham P. Pansare. A lot of time and effort has gone into building this project, and the developer has not received payment for this work. If you find this application useful, a small donation to support the developer would be greatly appreciated.',
@@ -346,6 +348,8 @@ export const translations = {
     transferFrom: 'ट्रान्सफर कडून',
     dashboard: 'डॅशबोर्ड',
     noTransferPeople: 'ट्रान्सफरसाठी व्यक्ती उपलब्ध नाही.',
+    pickContact: 'संपर्क निवडा',
+    noContactsFound: 'या डिव्हाइसवर संपर्क आढळले नाहीत.',
     developerSupportTitle: 'डेव्हलपर सपोर्ट',
     developerSupportMessage:
       'हे अॅप Pratham P. Pansare यांनी तयार केले आहे. हे अॅप बनवण्यासाठी खूप वेळ आणि मेहनत घेतली गेली आहे आणि या कामासाठी डेव्हलपरला कोणतेही पेमेंट मिळालेले नाही. तुम्हाला हे अॅप उपयुक्त वाटत असेल, तर डेव्हलपरला सपोर्ट करण्यासाठी छोटीशी मदत मनापासून स्वागतार्ह आहे.',

@@ -17,7 +17,7 @@ import {
 } from '../services/expenseService';
 import { signOut } from '../services/authService';
 import { toImagePayload } from '../services/fileService';
-import { isContactPickerSupported, pickDeviceContact } from '../services/contactService';
+import { isContactPickerSupported, listDeviceContacts } from '../services/contactService';
 import { loadAppConfig, saveAppConfig } from '../services/appConfigService';
 import { pushDeletedEntry } from '../services/recycleBinService';
 import {
@@ -111,7 +111,6 @@ const inRange = (entryDate, mode, from, to) => {
 };
 
 const formatAmount = (value) => `₹ ${Number(value || 0).toLocaleString('en-IN')}`;
-const addPersonDraftKey = (userId) => `khatawali.add.person.draft.${userId}`;
 const buildPersonCategoryKey = (name, category) => `${String(name || '').trim().toLowerCase()}::${String(category || '').trim().toLowerCase()}`;
 const resolveSupportSessionToken = (session) => session?.refresh_token || session?.access_token || '';
 const supportPopupSeenKey = (userId, sessionToken) => `khatawali.dev.support.popup.dismissed.${userId}.${sessionToken}`;
@@ -147,8 +146,11 @@ const Dashboard = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showQuickProfileModal, setShowQuickProfileModal] = useState(false);
   const [showDeveloperSupportPopup, setShowDeveloperSupportPopup] = useState(false);
+  const [showContactPickerModal, setShowContactPickerModal] = useState(false);
+  const [contactSearch, setContactSearch] = useState('');
+  const [deviceContacts, setDeviceContacts] = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [hideTotal, setHideTotal] = useState(false);
-  const [contactPickerInProgress, setContactPickerInProgress] = useState(false);
   const [quickProfile, setQuickProfile] = useState(() => createProfileDraft(loadAppConfig().profile));
   const [quickProfileError, setQuickProfileError] = useState('');
   const [quickProfileSaving, setQuickProfileSaving] = useState(false);
@@ -223,31 +225,6 @@ const Dashboard = () => {
     }
   }, [supportSessionToken, user?.id]);
 
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const key = addPersonDraftKey(user.id);
-
-    try {
-      const raw = window.sessionStorage.getItem(key);
-      if (!raw) return;
-
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') return;
-
-      setEntryForm((prev) => ({
-        ...prev,
-        ...parsed,
-        category: parsed.category || prev.category || defaultCategory
-      }));
-      setShowAddModal(true);
-    } catch {
-      // Ignore malformed draft payloads.
-    } finally {
-      window.sessionStorage.removeItem(key);
-    }
-  }, [defaultCategory, user?.id]);
-
   const decoratedExpenses = useMemo(() => {
     return expenses.map(decorateExpense);
   }, [expenses]);
@@ -262,13 +239,23 @@ const Dashboard = () => {
     return rangeFilteredExpenses.filter((item) => {
       if (!query) return true;
 
-      const haystack = [item.biller_name || '', item.phone || '', item.cleanDescription || '']
+      const haystack = [item.biller_name || '', item.phone || '', item.cleanDescription || '', item.displayCategory || '']
         .join(' ')
         .toLowerCase();
 
       return haystack.includes(query);
     });
   }, [rangeFilteredExpenses, filters.search]);
+
+  const visibleDeviceContacts = useMemo(() => {
+    const query = contactSearch.trim().toLowerCase();
+    if (!query) return deviceContacts;
+
+    return deviceContacts.filter((contact) => {
+      const haystack = `${contact.name || ''} ${contact.phone || ''}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [contactSearch, deviceContacts]);
 
   const groupedPeople = useMemo(() => {
     const map = new Map();
@@ -351,12 +338,15 @@ const Dashboard = () => {
     }
 
     setShowAddModal(true);
+    setShowContactPickerModal(false);
   };
 
   const closeAddModal = () => {
     setEditingExpenseId(null);
     setEntryForm(createInitialEntry(defaultCategory));
     setShowAddModal(false);
+    setShowContactPickerModal(false);
+    setContactSearch('');
   };
 
   const handleSaveEntry = async (event) => {
@@ -676,6 +666,46 @@ const Dashboard = () => {
     }
   };
 
+  const openContactPickerModal = async () => {
+    if (!isContactPickerSupported()) {
+      setError('Contact picker is available only on mobile app.');
+      return;
+    }
+
+    setShowContactPickerModal(true);
+    setContactSearch('');
+    setError('');
+
+    if (deviceContacts.length > 0) {
+      return;
+    }
+
+    setLoadingContacts(true);
+
+    try {
+      const contacts = await listDeviceContacts();
+      setDeviceContacts(contacts);
+    } catch (pickError) {
+      setError(pickError.message || 'Unable to load contacts.');
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const handlePickContactSelection = (contact) => {
+    const contactName = contact?.name || '';
+    const contactPhone = contact?.phone || '';
+
+    setEntryForm((prev) => ({
+      ...prev,
+      billerName: contactName || prev.billerName,
+      phone: contactPhone || prev.phone
+    }));
+
+    setShowContactPickerModal(false);
+    setShowAddModal(true);
+  };
+
   const handleQuickProfileUpload = async (field, file) => {
     if (!file) return;
 
@@ -711,43 +741,6 @@ const Dashboard = () => {
       setQuickProfileError(saveError.message || 'Unable to save profile.');
     } finally {
       setQuickProfileSaving(false);
-    }
-  };
-
-  const handlePickContact = async () => {
-    if (!isContactPickerSupported()) {
-      setError('Contact picker is available only on mobile app.');
-      return;
-    }
-
-    const draftKey = user?.id ? addPersonDraftKey(user.id) : '';
-
-    setContactPickerInProgress(true);
-    setShowAddModal(true);
-    setError('');
-
-    try {
-      if (draftKey) {
-        window.sessionStorage.setItem(draftKey, JSON.stringify(entryForm));
-      }
-
-      const picked = await pickDeviceContact();
-
-      setEntryForm((prev) => ({
-        ...prev,
-        billerName: picked.name || prev.billerName,
-        phone: picked.phone || prev.phone
-      }));
-      setShowAddModal(true);
-    } catch (pickError) {
-      setError(pickError.message || 'Unable to pick contact.');
-    } finally {
-      setContactPickerInProgress(false);
-      setShowAddModal(true);
-
-      if (draftKey) {
-        window.sessionStorage.removeItem(draftKey);
-      }
     }
   };
 
@@ -1033,7 +1026,7 @@ const Dashboard = () => {
       </section>
 
       {showAddModal && (
-        <div className="ledger-modal-overlay" onClick={() => !contactPickerInProgress && closeAddModal()}>
+        <div className="ledger-modal-overlay" onClick={closeAddModal}>
           <div className="ledger-modal" onClick={(event) => event.stopPropagation()}>
             <h3>{editingExpenseId ? t('editPersonEntry') : t('addNewPerson')}</h3>
 
@@ -1051,8 +1044,7 @@ const Dashboard = () => {
                   <button
                     type="button"
                     className="btn btn-outline-primary"
-                    onClick={() => void handlePickContact()}
-                    disabled={contactPickerInProgress}
+                    onClick={() => void openContactPickerModal()}
                   >
                     <i className="bi bi-person-lines-fill"></i>
                   </button>
@@ -1160,7 +1152,7 @@ const Dashboard = () => {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn btn-outline-secondary" onClick={closeAddModal} disabled={contactPickerInProgress}>
+                <button type="button" className="btn btn-outline-secondary" onClick={closeAddModal}>
                   {t('cancel')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
@@ -1168,6 +1160,58 @@ const Dashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showContactPickerModal && (
+        <div className="ledger-modal-overlay" onClick={() => setShowContactPickerModal(false)}>
+          <div className="ledger-modal contact-picker-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>{t('pickContact')}</h3>
+
+            <input
+              className="form-control"
+              placeholder={t('searchPerson')}
+              value={contactSearch}
+              onChange={(event) => setContactSearch(event.target.value)}
+            />
+
+            {loadingContacts ? (
+              <div className="loader-inline mt-3">
+                <Loader overlay={false} />
+              </div>
+            ) : (
+              <div className="contact-picker-list">
+                {visibleDeviceContacts.length === 0 ? (
+                  <p className="text-muted mb-0">{t('noContactsFound')}</p>
+                ) : (
+                  visibleDeviceContacts.map((contact) => {
+                    const displayName = contact.name || contact.phone || 'Contact';
+
+                    return (
+                      <button
+                        key={`${contact.name || ''}-${contact.phone || ''}`}
+                        type="button"
+                        className="contact-picker-item"
+                        onClick={() => handlePickContactSelection(contact)}
+                      >
+                        <span className="transfer-avatar">{displayName.slice(0, 1).toUpperCase()}</span>
+                        <span>
+                          <strong>{displayName}</strong>
+                          {contact.phone && <small>{contact.phone}</small>}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setShowContactPickerModal(false)}>
+                {t('close')}
+              </button>
+            </div>
           </div>
         </div>
       )}
