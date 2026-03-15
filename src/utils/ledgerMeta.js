@@ -117,17 +117,27 @@ export const buildExpensePayload = ({
   entryType,
   note,
   phone,
-  date
+  date,
+  receipt
 }) => {
   const normalizedPersonType = normalizePersonType(personType);
   const normalizedEntryType = normalizeEntryType(entryType);
   const chosenCategory = displayCategory || LEDGER_CATEGORIES[0];
 
+  const safeReceipt = receipt?.dataUrl
+    ? {
+        name: receipt.name || 'receipt.jpg',
+        mimeType: receipt.mimeType || 'image/jpeg',
+        dataUrl: receipt.dataUrl
+      }
+    : null;
+
   const metadata = {
     displayCategory: chosenCategory,
     personType: normalizedPersonType,
     entryType: normalizedEntryType,
-    phone: (phone || '').trim()
+    phone: (phone || '').trim(),
+    receipt: safeReceipt
   };
 
   return {
@@ -151,6 +161,7 @@ export const decorateExpense = (expense) => {
     entryType,
     personType,
     phone: (meta.phone || '').trim(),
+    receipt: meta.receipt?.dataUrl ? meta.receipt : null,
     displayCategory: meta.displayCategory || expense.category || 'maintenance',
     cleanDescription: stripLedgerMeta(expense.description || ''),
     credit: entryType === 'credit' ? amount : 0,

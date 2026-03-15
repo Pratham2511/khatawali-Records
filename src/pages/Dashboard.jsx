@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -16,6 +16,10 @@ import {
   updateExpense
 } from '../services/expenseService';
 import { signOut } from '../services/authService';
+import { toImagePayload } from '../services/fileService';
+import { isContactPickerSupported, pickDeviceContact } from '../services/contactService';
+import { loadAppConfig } from '../services/appConfigService';
+import { pushDeletedEntry } from '../services/recycleBinService';
 import {
   buildExpensePayload,
   decorateExpense,
@@ -24,18 +28,17 @@ import {
   PERSON_TYPES
 } from '../utils/ledgerMeta';
 
-const personTypeTabs = ['all', ...PERSON_TYPES];
-
-const initialEntry = {
+const createInitialEntry = (defaultCategory) => ({
   billerName: '',
   personType: 'customer',
-  category: LEDGER_CATEGORIES[0],
+  category: defaultCategory,
   entryType: 'debit',
   amount: '',
   phone: '',
   note: '',
-  date: new Date().toISOString().slice(0, 10)
-};
+  date: new Date().toISOString().slice(0, 10),
+  receipt: null
+});
 
 const rangeOptions = [
   { key: 'all', labelKey: 'allTime' },
@@ -105,6 +108,8 @@ const formatAmount = (value) => `₹ ${Number(value || 0).toLocaleString('en-IN'
 const Dashboard = () => {
   const { user, biometricEnabled } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -115,8 +120,7 @@ const Dashboard = () => {
   const [filters, setFilters] = useState({
     year: String(new Date().getFullYear()),
     month: '',
-    search: '',
-    personType: 'all'
+    search: ''
   });
 
   const [rangeFilter, setRangeFilter] = useState({
@@ -132,7 +136,14 @@ const Dashboard = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [hideTotal, setHideTotal] = useState(false);
 
-  const [entryForm, setEntryForm] = useState(initialEntry);
+  const [categoryOptions] = useState(() => {
+    const configuredItems = loadAppConfig().catalogItems || [];
+    return configuredItems.length ? configuredItems : LEDGER_CATEGORIES;
+  });
+
+  const defaultCategory = categoryOptions[0] || LEDGER_CATEGORIES[0];
+
+  const [entryForm, setEntryForm] = useState(() => createInitialEntry(defaultCategory));
   const [editingExpenseId, setEditingExpenseId] = useState(null);
 
   const years = useMemo(() => {
@@ -168,6 +179,13 @@ const Dashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, filters.year, filters.month]);
 
+  useEffect(() => {
+    if (location.state?.openStatement) {
+      setShowStatementModal(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
+
   const decoratedExpenses = useMemo(() => {
     return expenses.map(decorateExpense);
   }, [expenses]);
@@ -180,11 +198,15 @@ const Dashboard = () => {
     const query = filters.search.trim().toLowerCase();
 
     return rangeFilteredExpenses.filter((item) => {
-      const matchesSearch = !query || (item.biller_name || '').toLowerCase().includes(query);
-      const matchesPersonType = filters.personType === 'all' || item.personType === filters.personType;
-      return matchesSearch && matchesPersonType;
+      if (!query) return true;
+
+      const haystack = [item.biller_name || '', item.phone || '', item.cleanDescription || '']
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(query);
     });
-  }, [rangeFilteredExpenses, filters.search, filters.personType]);
+  }, [rangeFilteredExpenses, filters.search]);
 
   const groupedPeople = useMemo(() => {
     const map = new Map();
@@ -249,16 +271,17 @@ const Dashboard = () => {
       setEntryForm({
         billerName: expense.biller_name,
         personType: expense.personType,
-        category: expense.displayCategory,
+        category: expense.displayCategory || defaultCategory,
         entryType: expense.entryType,
         amount: String(expense.amount || ''),
         phone: expense.phone || '',
         note: expense.cleanDescription || '',
-        date: expense.date ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10)
+        date: expense.date ? expense.date.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        receipt: expense.receipt || null
       });
     } else {
       setEditingExpenseId(null);
-      setEntryForm(initialEntry);
+      setEntryForm(createInitialEntry(defaultCategory));
     }
 
     setShowAddModal(true);
@@ -266,7 +289,7 @@ const Dashboard = () => {
 
   const closeAddModal = () => {
     setEditingExpenseId(null);
-    setEntryForm(initialEntry);
+    setEntryForm(createInitialEntry(defaultCategory));
     setShowAddModal(false);
   };
 
@@ -289,7 +312,8 @@ const Dashboard = () => {
       entryType: entryForm.entryType,
       note: entryForm.note,
       phone: entryForm.phone,
-      date: entryForm.date
+      date: entryForm.date,
+      receipt: entryForm.receipt
     });
 
     const action = editingExpenseId
@@ -331,6 +355,13 @@ const Dashboard = () => {
       return;
     }
 
+    if (user?.id) {
+      pushDeletedEntry({
+        userId: user.id,
+        snapshot: expense
+      });
+    }
+
     await loadExpenses();
   };
 
@@ -341,7 +372,7 @@ const Dashboard = () => {
       .map((row) => {
         const billerName = row['Biller Name'] || row.Name || row.Person || '';
         const amount = Number(row.Amount || row.amount || 0);
-        const category = row.Category || row.category || LEDGER_CATEGORIES[0];
+        const category = row.Category || row.category || defaultCategory;
         const entryType = String(row.Type || row.EntryType || row.entry_type || 'debit').toLowerCase();
         const personType = String(row.PersonType || row.person_type || 'customer').toLowerCase();
         const note = row.Description || row.Note || row.note || '';
@@ -359,7 +390,8 @@ const Dashboard = () => {
             entryType,
             note,
             phone,
-            date
+            date,
+            receipt: null
           }),
           user_id: user.id
         };
@@ -422,18 +454,108 @@ const Dashboard = () => {
     setRangeFilter((prev) => ({ ...prev, mode }));
   };
 
+  const openPersonLedger = (personName) => {
+    navigate(`/person/${encodeURIComponent(personName)}`);
+  };
+
+  const handlePickContact = async () => {
+    try {
+      if (!isContactPickerSupported()) {
+        setError('Contact picker is available only on mobile app.');
+        return;
+      }
+
+      const picked = await pickDeviceContact();
+
+      setEntryForm((prev) => ({
+        ...prev,
+        billerName: picked.name || prev.billerName,
+        phone: picked.phone || prev.phone
+      }));
+    } catch (pickError) {
+      setError(pickError.message || 'Unable to pick contact.');
+    }
+  };
+
+  const handleReceiptSelection = async (file) => {
+    try {
+      const receipt = await toImagePayload(file);
+      setEntryForm((prev) => ({ ...prev, receipt }));
+    } catch (receiptError) {
+      setError(receiptError.message || 'Unable to process receipt image.');
+    }
+  };
+
+  const handleMenuOption = (action) => {
+    action();
+    setShowMenu(false);
+  };
+
+  const menuOptions = [
+    {
+      icon: 'bi-bank',
+      label: t('bankHolidays'),
+      action: () => navigate('/bank-holidays')
+    },
+    {
+      icon: 'bi-file-earmark-richtext',
+      label: t('makeYourLetterhead'),
+      action: () => navigate('/letterhead')
+    },
+    {
+      icon: 'bi-whatsapp',
+      label: t('customizeMessage'),
+      action: () => navigate('/message-customization')
+    },
+    {
+      icon: 'bi-node-plus-fill',
+      label: t('addOrRemoveItem'),
+      action: () => navigate('/item-manager')
+    },
+    {
+      icon: 'bi-gear-fill',
+      label: t('settingsAndProfile'),
+      action: () => navigate('/profile')
+    },
+    {
+      icon: 'bi-cloud-arrow-up-fill',
+      label: t('exportData'),
+      action: () => setShowStatementModal(true)
+    },
+    {
+      icon: 'bi-envelope-at-fill',
+      label: t('changeGmailId'),
+      action: () => navigate('/change-gmail')
+    },
+    {
+      icon: 'bi-arrow-repeat',
+      label: t('restoreData'),
+      action: () => setShowImportModal(true)
+    },
+    {
+      icon: 'bi-question-circle-fill',
+      label: t('helpSupport'),
+      action: () => navigate('/help-support')
+    },
+    {
+      icon: 'bi-trash3-fill',
+      label: t('recycleBin'),
+      action: () => navigate('/recycle-bin')
+    }
+  ];
+
   return (
     <div className="ledger-screen">
       <header className="ledger-topbar">
         <div className="account-strip">
           <img src="/icon-192.png" alt="Khatawali" className="ledger-logo" />
           <div className="account-meta">
-            <h1>{filters.year || t('defaultYearLabel')}</h1>
+            <h1>{t('appHeaderTitle')}</h1>
             <p>
               {user?.email} <i className="bi bi-check2"></i>
             </p>
           </div>
-          <button className="icon-top-btn" type="button" onClick={() => setShowFilterModal(true)}>
+          <button className="icon-top-btn" type="button" onClick={() => navigate('/profile')}>
             <i className="bi bi-pencil-fill"></i>
           </button>
         </div>
@@ -463,19 +585,9 @@ const Dashboard = () => {
               <span>{t('statement')}</span>
             </button>
 
-            <button className="mini-action" type="button" onClick={() => setShowImportModal(true)}>
-              <i className="bi bi-file-arrow-up-fill"></i>
-              <span>{t('import')}</span>
-            </button>
-
-            <button className="mini-action" type="button" onClick={handleExportPdf}>
+            <button className="mini-action" type="button" onClick={() => setShowStatementModal(true)}>
               <i className="bi bi-file-earmark-pdf"></i>
-              <span>{t('pdf')}</span>
-            </button>
-
-            <button className="mini-action" type="button" onClick={handleExportExcel}>
-              <i className="bi bi-file-earmark-spreadsheet"></i>
-              <span>{t('excel')}</span>
+              <span>{t('pdfExcel')}</span>
             </button>
 
             <div className="menu-anchor">
@@ -486,35 +598,36 @@ const Dashboard = () => {
 
               {showMenu && (
                 <div className="ledger-menu-dropdown">
-                  <div className="menu-title">{t('language')}</div>
-                  <button
-                    className={`menu-item ${language === 'mr' ? 'active' : ''}`}
-                    type="button"
-                    onClick={() => {
-                      setLanguage('mr');
-                      setShowMenu(false);
-                    }}
-                  >
-                    {t('marathi')}
-                  </button>
-                  <button
-                    className={`menu-item ${language === 'en' ? 'active' : ''}`}
-                    type="button"
-                    onClick={() => {
-                      setLanguage('en');
-                      setShowMenu(false);
-                    }}
-                  >
-                    {t('english')}
-                  </button>
-                  <Link className="menu-item" to="/profile" onClick={() => setShowMenu(false)}>
-                    {t('profile')}
-                  </Link>
-                  <button className="menu-item" type="button" onClick={() => void setShowImportModal(true)}>
-                    {t('import')}
-                  </button>
-                  <button className="menu-item danger" type="button" onClick={() => void signOut()}>
-                    {t('signOut')}
+                  <div className="menu-title d-flex justify-content-between align-items-center">
+                    <span>{t('mainMenu')}</span>
+                    <span className="menu-language-switch">
+                      <button
+                        className={`lang-btn ${language === 'mr' ? 'active' : ''}`}
+                        type="button"
+                        onClick={() => setLanguage('mr')}
+                      >
+                        मर
+                      </button>
+                      <button
+                        className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+                        type="button"
+                        onClick={() => setLanguage('en')}
+                      >
+                        EN
+                      </button>
+                    </span>
+                  </div>
+
+                  {menuOptions.map((option) => (
+                    <button key={option.label} className="menu-item icon-item" type="button" onClick={() => handleMenuOption(option.action)}>
+                      <i className={`bi ${option.icon}`}></i>
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+
+                  <button className="menu-item danger icon-item" type="button" onClick={() => void signOut()}>
+                    <i className="bi bi-box-arrow-right"></i>
+                    <span>{t('signOut')}</span>
                   </button>
                 </div>
               )}
@@ -533,14 +646,26 @@ const Dashboard = () => {
           </div>
         ) : groupedPeople.length === 0 ? (
           <div className="ledger-empty">
-            <h2>{t('emptyLedgerTitle')}</h2>
+            <h2>{t('emptyLedgerTitle')}..!</h2>
             <p>{t('emptyLedgerHint')}</p>
             <p>{t('emptyLedgerHintMr')}</p>
           </div>
         ) : (
           <div className="people-list">
             {groupedPeople.map((person) => (
-              <article key={person.name} className="person-row-card">
+              <article
+                key={person.name}
+                className="person-row-card clickable-person"
+                role="button"
+                tabIndex={0}
+                onClick={() => openPersonLedger(person.name)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openPersonLedger(person.name);
+                  }
+                }}
+              >
                 <div className="person-avatar">{person.name.slice(0, 1).toUpperCase()}</div>
 
                 <div className="person-main">
@@ -562,14 +687,34 @@ const Dashboard = () => {
                   <div className="person-balance">{formatAmount(person.balance)}</div>
                   <div className="person-type">{t(person.personType)}</div>
                   <div className="quick-actions">
-                    <button type="button" className="quick-icon" onClick={() => openAddModal(person.lastExpense)}>
+                    <button
+                      type="button"
+                      className="quick-icon"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openAddModal(person.lastExpense);
+                      }}
+                    >
                       <i className="bi bi-pencil-fill"></i>
                     </button>
-                    <button type="button" className="quick-icon danger" onClick={() => void handleDelete(person.lastExpense)}>
+                    <button
+                      type="button"
+                      className="quick-icon danger"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void handleDelete(person.lastExpense);
+                      }}
+                    >
                       <i className="bi bi-trash3-fill"></i>
                     </button>
                     {person.phone ? (
-                      <a className="quick-icon" href={`tel:${person.phone}`}>
+                      <a
+                        className="quick-icon"
+                        href={`tel:${person.phone}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
                         <i className="bi bi-telephone-fill"></i>
                       </a>
                     ) : (
@@ -586,19 +731,6 @@ const Dashboard = () => {
       </main>
 
       <section className="ledger-bottom-bar">
-        <div className="person-type-tabs">
-          {personTypeTabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={`tab-btn ${filters.personType === tab ? 'active' : ''}`}
-              onClick={() => setFilters((prev) => ({ ...prev, personType: tab }))}
-            >
-              {t(tab)}
-            </button>
-          ))}
-        </div>
-
         {!hideTotal && (
           <div className="totals-grid">
             <div className="totals-main">
@@ -647,13 +779,18 @@ const Dashboard = () => {
 
               <div className="mb-2">
                 <label className="form-label">{t('personName')}</label>
-                <input
-                  className="form-control"
-                  value={entryForm.billerName}
-                  onChange={(event) => setEntryForm((prev) => ({ ...prev, billerName: event.target.value }))}
-                  placeholder={t('personName')}
-                  required
-                />
+                <div className="input-group">
+                  <input
+                    className="form-control"
+                    value={entryForm.billerName}
+                    onChange={(event) => setEntryForm((prev) => ({ ...prev, billerName: event.target.value }))}
+                    placeholder={t('personName')}
+                    required
+                  />
+                  <button type="button" className="btn btn-outline-primary" onClick={() => void handlePickContact()}>
+                    <i className="bi bi-person-lines-fill"></i>
+                  </button>
+                </div>
               </div>
 
               <div className="mb-2">
@@ -663,7 +800,7 @@ const Dashboard = () => {
                   value={entryForm.category}
                   onChange={(event) => setEntryForm((prev) => ({ ...prev, category: event.target.value }))}
                 >
-                  {LEDGER_CATEGORIES.map((category) => (
+                  {categoryOptions.map((category) => (
                     <option key={category} value={category}>
                       {category}
                     </option>
@@ -724,12 +861,36 @@ const Dashboard = () => {
 
               <div className="mb-2">
                 <label className="form-label">{t('note')}</label>
-                <input
-                  className="form-control"
-                  value={entryForm.note}
-                  onChange={(event) => setEntryForm((prev) => ({ ...prev, note: event.target.value }))}
-                  placeholder={t('note')}
-                />
+                <div className="input-group">
+                  <input
+                    className="form-control"
+                    value={entryForm.note}
+                    onChange={(event) => setEntryForm((prev) => ({ ...prev, note: event.target.value }))}
+                    placeholder={t('note')}
+                  />
+                  <label className="btn btn-outline-primary mb-0">
+                    <i className="bi bi-receipt"></i>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={(event) => void handleReceiptSelection(event.target.files?.[0])}
+                    />
+                  </label>
+                </div>
+
+                {entryForm.receipt?.dataUrl && (
+                  <div className="receipt-preview-wrap mt-2">
+                    <img src={entryForm.receipt.dataUrl} alt="Receipt" className="receipt-preview" />
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => setEntryForm((prev) => ({ ...prev, receipt: null }))}
+                    >
+                      {t('remove')}
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="modal-actions">
@@ -847,11 +1008,25 @@ const Dashboard = () => {
             </div>
 
             <div className="modal-actions">
-              <button type="button" className="btn btn-primary" onClick={handleExportPdf}>
-                {t('pdf')}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  handleExportPdf();
+                  setShowStatementModal(false);
+                }}
+              >
+                {t('makeFullPdf')}
               </button>
-              <button type="button" className="btn btn-primary" onClick={handleExportExcel}>
-                {t('excel')}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  handleExportExcel();
+                  setShowStatementModal(false);
+                }}
+              >
+                {t('makeFullExcel')}
               </button>
             </div>
           </div>

@@ -35,6 +35,17 @@ export const fetchExpenses = async ({ userId, year, month, billerName }) => {
   return query;
 };
 
+export const fetchPersonExpenses = async ({ userId, personName }) => {
+  let query = supabase
+    .from('expenses')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('biller_name', personName)
+    .order('created_at', { ascending: false });
+
+  return query;
+};
+
 export const bulkInsertExpenses = async (rows) => {
   return supabase.from('expenses').insert(rows).select();
 };
