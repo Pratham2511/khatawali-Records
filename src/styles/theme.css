@@ -932,6 +932,7 @@ a {
   min-height: 100vh;
   background: #eef3ee;
   padding-bottom: 188px;
+  overflow-x: hidden;
 }
 
 .person-ledger-topbar {
@@ -1282,12 +1283,13 @@ a {
 .person-toolbar-row {
   margin-top: 8px;
   display: grid;
-  grid-template-columns: minmax(150px, 1.35fr) repeat(5, minmax(48px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 5px;
-  align-items: end;
+  align-items: stretch;
 }
 
 .person-search-wrap {
+  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1319,7 +1321,7 @@ a {
 .person-toolbar-btn {
   border: 0;
   border-radius: 10px;
-  min-height: 50px;
+  min-height: 46px;
   background: transparent;
   color: #eaf6ee;
   display: flex;
@@ -1337,6 +1339,10 @@ a {
 
 .person-toolbar-btn.active {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.person-toolbar-btn:disabled {
+  opacity: 0.45;
 }
 
 .person-toolbar-menu-anchor {
@@ -1642,12 +1648,12 @@ a {
 
 @media (max-width: 560px) {
   .person-toolbar-row {
-    grid-template-columns: 1fr repeat(5, minmax(46px, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .person-toolbar-btn {
     font-size: 0.65rem;
-    min-height: 50px;
+    min-height: 44px;
   }
 
   .person-toolbar-btn i {

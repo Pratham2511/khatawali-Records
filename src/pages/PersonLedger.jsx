@@ -21,6 +21,8 @@ import { buildExpensePayload, decorateExpense } from '../utils/ledgerMeta';
 const formatAmount = (value) => `₹ ${Number(value || 0).toLocaleString('en-IN')}`;
 const formatCurrencyValue = (value) => Number(value || 0).toLocaleString('en-IN');
 
+const getDialablePhone = (value) => String(value || '').replace(/[^\d+]/g, '');
+
 const getMaskedPhone = (value) => {
   const digits = String(value || '').replace(/\D/g, '');
   if (digits.length <= 4) return digits;
@@ -563,6 +565,12 @@ const PersonLedger = () => {
     window.open(`https://wa.me/${mobile}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
+  const openDialer = () => {
+    const dialablePhone = getDialablePhone(primaryPhone);
+    if (!dialablePhone) return;
+    window.location.href = `tel:${dialablePhone}`;
+  };
+
   return (
     <div className="person-ledger-screen">
       <header className="person-ledger-topbar person-ledger-topbar-ref">
@@ -582,20 +590,6 @@ const PersonLedger = () => {
           </div>
 
           <div className="person-header-actions">
-            {primaryPhone ? (
-              <a href={`tel:${primaryPhone}`} className="icon-top-btn success-link" aria-label="Call">
-                <i className="bi bi-telephone-fill"></i>
-              </a>
-            ) : (
-              <button type="button" className="icon-top-btn" disabled>
-                <i className="bi bi-telephone-fill"></i>
-              </button>
-            )}
-
-            <button type="button" className="icon-top-btn" onClick={openWhatsApp} disabled={!primaryPhone} aria-label="WhatsApp">
-              <i className="bi bi-whatsapp"></i>
-            </button>
-
             <button type="button" className="icon-top-btn" onClick={() => navigate('/profile')} aria-label="Edit Profile">
               <i className="bi bi-pencil-fill"></i>
             </button>
@@ -623,14 +617,19 @@ const PersonLedger = () => {
             <span>{t('filter')}</span>
           </button>
 
-          <button type="button" className="person-toolbar-btn" onClick={openWhatsApp}>
-            <i className="bi bi-whatsapp"></i>
-            <span>{t('message')}</span>
-          </button>
-
           <button type="button" className="person-toolbar-btn" onClick={exportPersonPdf}>
             <i className="bi bi-file-earmark-pdf"></i>
             <span>{t('pdfFile')}</span>
+          </button>
+
+          <button type="button" className="person-toolbar-btn" onClick={openDialer} disabled={!primaryPhone}>
+            <i className="bi bi-telephone-fill"></i>
+            <span>{t('callNow')}</span>
+          </button>
+
+          <button type="button" className="person-toolbar-btn" onClick={openWhatsApp} disabled={!primaryPhone}>
+            <i className="bi bi-whatsapp"></i>
+            <span>{t('message')}</span>
           </button>
 
           <button type="button" className="person-toolbar-btn" onClick={openTransferModal}>
