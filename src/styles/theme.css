@@ -614,6 +614,17 @@ a {
   color: #2f4136;
 }
 
+.developer-support-lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0 10px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #31503d;
+}
+
 .developer-support-signoff {
   margin: 10px 0 0;
   color: #2f6e45;

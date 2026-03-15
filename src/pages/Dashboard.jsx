@@ -1303,6 +1303,25 @@ const Dashboard = () => {
             </button>
 
             <h3>{t('developerSupportTitle')}</h3>
+            <div className="developer-support-lang-row">
+              <span>{t('language')}</span>
+              <span className="menu-language-switch">
+                <button
+                  className={`lang-btn ${language === 'mr' ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => setLanguage('mr')}
+                >
+                  मर
+                </button>
+                <button
+                  className={`lang-btn ${language === 'en' ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                >
+                  EN
+                </button>
+              </span>
+            </div>
             <p className="developer-support-copy">{t('developerSupportMessage')}</p>
             <p className="developer-support-signoff">{t('developerSupportSignoff')}</p>
 
