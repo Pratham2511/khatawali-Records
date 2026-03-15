@@ -1224,3 +1224,386 @@ a {
     align-items: flex-start;
   }
 }
+
+/* Person ledger reference-style layout */
+.person-ledger-topbar-ref {
+  padding: 10px 8px 8px;
+}
+
+.person-ledger-head-ref {
+  display: grid;
+  grid-template-columns: auto 44px 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.person-head-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0f1e18;
+  font-size: 1.7rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.person-title-wrap .person-masked-phone {
+  color: rgba(225, 238, 231, 0.82);
+  font-size: 0.9em;
+}
+
+.person-toolbar-row {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(150px, 1.35fr) repeat(5, minmax(48px, 1fr));
+  gap: 5px;
+  align-items: end;
+}
+
+.person-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.person-search-input {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: #050a09;
+  color: #f8fffa;
+  padding: 0 12px;
+  font-size: 1.1rem;
+}
+
+.person-search-input::placeholder {
+  color: rgba(245, 255, 249, 0.8);
+}
+
+.person-search-wrap small {
+  color: rgba(212, 231, 217, 0.86);
+  font-size: 0.72rem;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.person-toolbar-btn {
+  border: 0;
+  border-radius: 10px;
+  min-height: 56px;
+  background: transparent;
+  color: #eaf6ee;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.person-toolbar-btn i {
+  font-size: 1.55rem;
+}
+
+.person-toolbar-btn.active {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.person-toolbar-menu-anchor {
+  position: relative;
+}
+
+.person-inline-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 320;
+  width: min(220px, 72vw);
+  border-radius: 12px;
+  border: 1px solid #d7e1da;
+  background: #fff;
+  box-shadow: var(--khata-shadow);
+}
+
+.person-inline-menu button {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+
+.person-inline-menu button:hover {
+  background: #f3f8f4;
+}
+
+.person-day-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #4f5f56;
+  margin-bottom: 10px;
+}
+
+.person-day-summary strong {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.person-day-summary span {
+  font-size: 1.3rem;
+  color: #70876f;
+}
+
+.ref-entry-list {
+  gap: 10px;
+}
+
+.ref-entry-card {
+  width: min(430px, 96%);
+  border-radius: 24px;
+  border: 1px solid #d6dbd6;
+  background: #ffffff;
+  padding: 11px 14px;
+  box-shadow: 0 3px 9px rgba(0, 0, 0, 0.09);
+  display: block;
+}
+
+.ref-entry-card.credit {
+  align-self: flex-start;
+}
+
+.ref-entry-card.debit {
+  align-self: flex-end;
+}
+
+.entry-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.entry-head-row h4 {
+  margin: 0;
+  font-size: 1.95rem;
+  font-weight: 600;
+}
+
+.entry-more-btn {
+  border: 0;
+  background: transparent;
+  color: #111;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+}
+
+.ref-amount {
+  margin-top: 2px;
+  font-size: 3.2rem;
+  line-height: 1;
+}
+
+.ref-closing-line {
+  margin-top: 2px;
+  text-align: right;
+  font-size: 1.4rem;
+}
+
+.ref-time-line {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 1.3rem;
+  color: #43395a;
+}
+
+.entry-order-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 24px;
+  border-radius: 14px;
+  border: 1px solid #d9dccf;
+  background: #f8f8ef;
+  font-size: 0.88rem;
+  color: #676a56;
+}
+
+.ref-totals-strip {
+  font-size: 2.6rem;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.totals-progress-track {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  height: 8px;
+  margin-bottom: 8px;
+}
+
+.totals-progress-credit {
+  background: #36a332;
+  border-radius: 6px;
+}
+
+.totals-progress-debit {
+  background: #ca1b1d;
+  border-radius: 6px;
+}
+
+.ref-collect-card {
+  margin-top: 0;
+  margin-bottom: 8px;
+  border-radius: 18px;
+}
+
+.ref-collect-card span {
+  font-size: 0.95rem;
+}
+
+.ref-collect-card strong {
+  font-size: 2rem;
+}
+
+.ref-action-row {
+  grid-template-columns: 1fr 1fr;
+}
+
+.transfer-modal {
+  width: min(700px, 100%);
+  max-width: 700px;
+}
+
+.transfer-people-list {
+  margin-top: 10px;
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid #d8dfda;
+  border-radius: 12px;
+  background: #f8faf8;
+}
+
+.transfer-person-item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #dde4de;
+}
+
+.transfer-person-item:last-child {
+  border-bottom: 0;
+}
+
+.transfer-person-item.active {
+  background: #e8f3eb;
+}
+
+.transfer-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #87d7ff, #9cf9ef);
+  color: #12313f;
+  font-size: 1.45rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transfer-person-item span {
+  display: flex;
+  flex-direction: column;
+}
+
+.transfer-person-item small {
+  color: #607168;
+  font-size: 0.8rem;
+}
+
+.transfer-form-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.transfer-form-grid > input.form-control:first-of-type {
+  grid-column: span 2;
+}
+
+.transfer-form-grid .btn {
+  min-height: 44px;
+}
+
+@media (max-width: 760px) {
+  .person-day-summary strong {
+    font-size: 2.2rem;
+  }
+
+  .person-day-summary span {
+    font-size: 1.45rem;
+  }
+
+  .ref-entry-card {
+    width: min(95%, 100%);
+  }
+
+  .ref-amount {
+    font-size: 2.2rem;
+  }
+
+  .ref-closing-line,
+  .ref-time-line {
+    font-size: 1rem;
+  }
+
+  .ref-totals-strip {
+    font-size: 1.7rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .person-toolbar-row {
+    grid-template-columns: 1fr repeat(5, minmax(46px, 1fr));
+  }
+
+  .person-toolbar-btn {
+    font-size: 0.65rem;
+    min-height: 50px;
+  }
+
+  .person-toolbar-btn i {
+    font-size: 1.2rem;
+  }
+
+  .transfer-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-form-grid > input.form-control:first-of-type {
+    grid-column: auto;
+  }
+}

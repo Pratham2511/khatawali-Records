@@ -296,7 +296,14 @@ const Dashboard = () => {
   const handleSaveEntry = async (event) => {
     event.preventDefault();
 
-    if (!entryForm.billerName.trim() || !entryForm.amount || !entryForm.date) {
+    if (!user?.id) {
+      setError('Session expired. Please login again.');
+      return;
+    }
+
+    const normalizedAmount = Number(String(entryForm.amount || '').replace(/,/g, '').trim());
+
+    if (!entryForm.billerName.trim() || !entryForm.date || !Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
       setError('Name, amount and date are required.');
       return;
     }
@@ -306,7 +313,7 @@ const Dashboard = () => {
 
     const payload = buildExpensePayload({
       billerName: entryForm.billerName,
-      amount: entryForm.amount,
+      amount: normalizedAmount,
       displayCategory: entryForm.category,
       personType: entryForm.personType,
       entryType: entryForm.entryType,
@@ -316,14 +323,14 @@ const Dashboard = () => {
       receipt: entryForm.receipt
     });
 
-    const action = editingExpenseId
-      ? updateExpense(editingExpenseId, payload)
-      : addExpense({
+    const result = editingExpenseId
+      ? await updateExpense(editingExpenseId, payload)
+      : await addExpense({
           ...payload,
           user_id: user.id
         });
 
-    const { error: actionError } = await action;
+    const { data: savedExpense, error: actionError } = result;
 
     setSaving(false);
 
@@ -332,9 +339,18 @@ const Dashboard = () => {
       return;
     }
 
+    if (savedExpense?.id) {
+      if (editingExpenseId) {
+        setExpenses((prev) => prev.map((item) => (item.id === savedExpense.id ? savedExpense : item)));
+      } else {
+        setExpenses((prev) => [savedExpense, ...prev]);
+      }
+    }
+
     setMessage(t('dataSynced'));
+    setFilters((prev) => ({ ...prev, search: '' }));
     closeAddModal();
-    await loadExpenses();
+    void loadExpenses();
   };
 
   const handleDelete = async (expense) => {
