@@ -1392,6 +1392,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  position: relative;
 }
 
 .entry-head-row h4 {
@@ -1407,6 +1408,36 @@ a {
   width: 26px;
   height: 26px;
   border-radius: 8px;
+}
+
+.entry-options-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  width: 126px;
+  border-radius: 10px;
+  border: 1px solid #d9e1db;
+  background: #fff;
+  box-shadow: 0 8px 18px rgba(23, 39, 31, 0.16);
+  overflow: hidden;
+  z-index: 4;
+}
+
+.entry-options-menu button {
+  width: 100%;
+  border: 0;
+  background: #fff;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.86rem;
+}
+
+.entry-options-menu button:hover {
+  background: #f2f7f3;
+}
+
+.entry-options-menu button.danger {
+  color: #a22a33;
 }
 
 .ref-amount {

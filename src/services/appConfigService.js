@@ -9,11 +9,6 @@ export const defaultAppConfig = {
     qrDataUrl: '',
     stampDataUrl: ''
   },
-  categoryTabs: {
-    customer: 'Customer',
-    supplier: 'Supplier',
-    other: 'Other'
-  },
   catalogItems: [
     'khat',
     'Tractor',

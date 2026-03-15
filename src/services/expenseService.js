@@ -1,12 +1,29 @@
 import { supabase } from './supabaseClient';
 import { startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
+const normalizeSingleRowResult = ({ data, error }) => {
+  if (error) {
+    return { data: null, error };
+  }
+
+  if (Array.isArray(data)) {
+    return {
+      data: data[0] || null,
+      error: null
+    };
+  }
+
+  return { data: data || null, error: null };
+};
+
 export const addExpense = async (payload) => {
-  return supabase.from('expenses').insert(payload).select().single();
+  const result = await supabase.from('expenses').insert(payload).select();
+  return normalizeSingleRowResult(result);
 };
 
 export const updateExpense = async (id, payload) => {
-  return supabase.from('expenses').update(payload).eq('id', id).select().single();
+  const result = await supabase.from('expenses').update(payload).eq('id', id).select();
+  return normalizeSingleRowResult(result);
 };
 
 export const deleteExpense = async (id) => {

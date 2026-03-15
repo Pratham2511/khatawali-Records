@@ -24,13 +24,11 @@ import {
   buildExpensePayload,
   decorateExpense,
   ENTRY_TYPES,
-  LEDGER_CATEGORIES,
-  PERSON_TYPES
+  LEDGER_CATEGORIES
 } from '../utils/ledgerMeta';
 
 const createInitialEntry = (defaultCategory) => ({
   billerName: '',
-  personType: 'customer',
   category: defaultCategory,
   entryType: 'debit',
   amount: '',
@@ -215,7 +213,6 @@ const Dashboard = () => {
       const name = (expense.biller_name || '').trim() || 'Unknown';
       const existing = map.get(name) || {
         name,
-        personType: expense.personType,
         phone: expense.phone,
         credit: 0,
         debit: 0,
@@ -236,7 +233,6 @@ const Dashboard = () => {
       if (!previousTime || new Date(currentTime).getTime() > new Date(previousTime).getTime()) {
         existing.lastTransactionAt = currentTime;
         existing.lastExpense = expense;
-        existing.personType = expense.personType || existing.personType;
         if (expense.phone) {
           existing.phone = expense.phone;
         }
@@ -270,7 +266,6 @@ const Dashboard = () => {
       setEditingExpenseId(expense.id);
       setEntryForm({
         billerName: expense.biller_name,
-        personType: expense.personType,
         category: expense.displayCategory || defaultCategory,
         entryType: expense.entryType,
         amount: String(expense.amount || ''),
@@ -315,7 +310,7 @@ const Dashboard = () => {
       billerName: entryForm.billerName,
       amount: normalizedAmount,
       displayCategory: entryForm.category,
-      personType: entryForm.personType,
+      personType: 'customer',
       entryType: entryForm.entryType,
       note: entryForm.note,
       phone: entryForm.phone,
@@ -390,7 +385,6 @@ const Dashboard = () => {
         const amount = Number(row.Amount || row.amount || 0);
         const category = row.Category || row.category || defaultCategory;
         const entryType = String(row.Type || row.EntryType || row.entry_type || 'debit').toLowerCase();
-        const personType = String(row.PersonType || row.person_type || 'customer').toLowerCase();
         const note = row.Description || row.Note || row.note || '';
         const phone = row.Mobile || row.Phone || row.phone || '';
         const date = parseImportedDate(row.Date || row.date);
@@ -402,7 +396,7 @@ const Dashboard = () => {
             billerName,
             amount,
             displayCategory: category,
-            personType,
+            personType: 'customer',
             entryType,
             note,
             phone,
@@ -437,6 +431,34 @@ const Dashboard = () => {
     }));
   }, [searchFilteredExpenses]);
 
+  const statementPdfRows = useMemo(() => {
+    const sorted = [...searchFilteredExpenses].sort((a, b) => {
+      const aTime = new Date(a.created_at || a.date || '').getTime();
+      const bTime = new Date(b.created_at || b.date || '').getTime();
+      return aTime - bTime;
+    });
+
+    let runningBalance = 0;
+
+    return sorted.map((item, index) => {
+      runningBalance += item.entryType === 'credit' ? Number(item.amount || 0) : -Number(item.amount || 0);
+
+      return {
+        no: index + 1,
+        dateTime:
+          item.date && item.created_at
+            ? `${format(new Date(item.date), 'dd/MM/yyyy')}\n${format(new Date(item.created_at), 'hh:mm a')}`
+            : item.date
+              ? format(new Date(item.date), 'dd/MM/yyyy')
+              : '-',
+        remarks: item.cleanDescription || item.biller_name || '-',
+        debit: item.entryType === 'debit' ? Number(item.amount || 0) : null,
+        credit: item.entryType === 'credit' ? Number(item.amount || 0) : null,
+        closing: runningBalance
+      };
+    });
+  }, [searchFilteredExpenses]);
+
   const handleExportExcel = () => {
     if (!exportRows.length) return;
 
@@ -447,21 +469,108 @@ const Dashboard = () => {
   };
 
   const handleExportPdf = () => {
-    if (!exportRows.length) return;
+    if (!statementPdfRows.length) return;
+
+    const profile = loadAppConfig().profile;
+    const customerName = profile.displayName || user?.user_metadata?.name || user?.email || 'Khatawali User';
+    const customerPhone = profile.phone || '-';
 
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    doc.setFontSize(15);
-    doc.text('Khatawali Ledger Statement', 40, 42);
+
+    doc.setFillColor(229, 245, 245);
+    doc.rect(20, 16, 555, 74, 'F');
+
+    doc.setTextColor(16, 71, 83);
+    doc.setFontSize(24);
+    doc.text('Udhar Khata Book', 30, 47);
+
+    doc.setTextColor(34, 44, 48);
     doc.setFontSize(10);
-    doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`, 40, 60);
+    doc.text('Digital India ka safe and secure Udhar Khata Book.', 30, 63);
+
+    doc.setFillColor(239, 248, 248);
+    doc.rect(20, 92, 555, 24, 'F');
+    doc.setFontSize(11);
+    doc.setTextColor(25, 102, 111);
+    doc.text('Transaction Report of All Time', 210, 108);
+
+    doc.setTextColor(20, 83, 87);
+    doc.setFontSize(12);
+    doc.text(`Name  :  ${customerName}`, 30, 135);
+    doc.text(`Phone :  ${customerPhone}`, 300, 135);
+    doc.text(`Linked:  ${user?.email || '-'}`, 30, 154);
 
     autoTable(doc, {
-      head: [['Date', 'Person', 'Type', 'Category', 'Amount', 'Note']],
-      body: exportRows.map((row) => [row.Date, row.Person, row.Type, row.Category, formatAmount(row.Amount), row.Note]),
-      startY: 78,
-      styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [12, 95, 69] }
+      head: [['No', 'Date', 'Remarks', 'Debit (Out)', 'Credit (In)', 'Cls Balance']],
+      body: statementPdfRows.map((row) => [
+        row.no,
+        row.dateTime,
+        row.remarks,
+        row.debit ? row.debit.toLocaleString('en-IN') : '-',
+        row.credit ? row.credit.toLocaleString('en-IN') : '-',
+        row.closing.toLocaleString('en-IN')
+      ]),
+      startY: 170,
+      styles: {
+        fontSize: 9,
+        cellPadding: 5,
+        lineColor: [197, 218, 222],
+        lineWidth: 0.5,
+        textColor: [34, 42, 44]
+      },
+      headStyles: {
+        fillColor: [236, 246, 246],
+        textColor: [20, 89, 98],
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 34 },
+        1: { cellWidth: 88 },
+        2: { cellWidth: 172 },
+        3: { halign: 'right', cellWidth: 88 },
+        4: { halign: 'right', cellWidth: 88 },
+        5: { halign: 'right', cellWidth: 85 }
+      },
+      didParseCell: (hookData) => {
+        const row = statementPdfRows[hookData.row.index];
+        if (!row || hookData.section !== 'body') return;
+
+        if (hookData.column.index === 3 && row.debit) {
+          hookData.cell.styles.textColor = [180, 48, 48];
+        }
+
+        if (hookData.column.index === 4 && row.credit) {
+          hookData.cell.styles.textColor = [32, 116, 52];
+        }
+
+        if (hookData.column.index === 5) {
+          hookData.cell.styles.textColor = row.closing >= 0 ? [32, 116, 52] : [180, 48, 48];
+        }
+      }
     });
+
+    const totalDebit = statementPdfRows.reduce((sum, row) => sum + (row.debit || 0), 0);
+    const totalCredit = statementPdfRows.reduce((sum, row) => sum + (row.credit || 0), 0);
+    const lastClosing = statementPdfRows[statementPdfRows.length - 1]?.closing || 0;
+
+    const finalY = doc.lastAutoTable?.finalY || 170;
+    doc.setDrawColor(199, 217, 219);
+    doc.line(20, finalY + 10, 575, finalY + 10);
+
+    doc.setFontSize(12);
+    doc.setTextColor(22, 96, 48);
+    doc.text(`Total Credit ₹ : ${totalCredit.toLocaleString('en-IN')}`, 30, finalY + 30);
+
+    doc.setTextColor(169, 41, 43);
+    doc.text(`Total Debit ₹ : ${totalDebit.toLocaleString('en-IN')}`, 240, finalY + 30);
+
+    doc.setTextColor(lastClosing >= 0 ? 22 : 169, lastClosing >= 0 ? 96 : 41, lastClosing >= 0 ? 48 : 43);
+    doc.text(`Closing Balance ₹ : ${lastClosing.toLocaleString('en-IN')}`, 420, finalY + 30);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 114, 118);
+    doc.text(`Print Date: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`, 30, 820);
+    doc.text('Page No. 1', 520, 820);
 
     doc.save(`khatawali-ledger-${Date.now()}.pdf`);
   };
@@ -701,7 +810,6 @@ const Dashboard = () => {
 
                 <div className="person-side">
                   <div className="person-balance">{formatAmount(person.balance)}</div>
-                  <div className="person-type">{t(person.personType)}</div>
                   <div className="quick-actions">
                     <button
                       type="button"
@@ -778,21 +886,6 @@ const Dashboard = () => {
             <h3>{editingExpenseId ? t('editPersonEntry') : t('addNewPerson')}</h3>
 
             <form className="ledger-form" onSubmit={handleSaveEntry}>
-              <div className="dual-cols">
-                {PERSON_TYPES.map((type) => (
-                  <label key={type} className="type-chip">
-                    <input
-                      type="radio"
-                      name="personType"
-                      value={type}
-                      checked={entryForm.personType === type}
-                      onChange={(event) => setEntryForm((prev) => ({ ...prev, personType: event.target.value }))}
-                    />
-                    <span>{t(type)}</span>
-                  </label>
-                ))}
-              </div>
-
               <div className="mb-2">
                 <label className="form-label">{t('personName')}</label>
                 <div className="input-group">

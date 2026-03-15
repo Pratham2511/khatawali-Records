@@ -70,17 +70,6 @@ const Profile = () => {
     }
   };
 
-  const resetCategoryTabs = () => {
-    updateConfig((prev) => ({
-      ...prev,
-      categoryTabs: {
-        customer: 'Customer',
-        supplier: 'Supplier',
-        other: 'Other'
-      }
-    }));
-  };
-
   return (
     <div className="config-screen">
       <header className="config-topbar">
@@ -155,54 +144,6 @@ const Profile = () => {
           </div>
 
           <p className="form-text mt-2">{t('uploadAdvice')}</p>
-        </section>
-
-        <section className="config-block">
-          <div className="d-flex justify-content-between align-items-center">
-            <h3 className="mb-0">{t('categoryTabConfiguration')}</h3>
-            <button type="button" className="btn btn-sm btn-link" onClick={resetCategoryTabs}>
-              {t('reset')}
-            </button>
-          </div>
-
-          <div className="row g-2 mt-1">
-            <div className="col-4">
-              <input
-                className="form-control"
-                value={config.categoryTabs.customer}
-                onChange={(event) =>
-                  updateConfig((prev) => ({
-                    ...prev,
-                    categoryTabs: { ...prev.categoryTabs, customer: event.target.value }
-                  }))
-                }
-              />
-            </div>
-            <div className="col-4">
-              <input
-                className="form-control"
-                value={config.categoryTabs.supplier}
-                onChange={(event) =>
-                  updateConfig((prev) => ({
-                    ...prev,
-                    categoryTabs: { ...prev.categoryTabs, supplier: event.target.value }
-                  }))
-                }
-              />
-            </div>
-            <div className="col-4">
-              <input
-                className="form-control"
-                value={config.categoryTabs.other}
-                onChange={(event) =>
-                  updateConfig((prev) => ({
-                    ...prev,
-                    categoryTabs: { ...prev.categoryTabs, other: event.target.value }
-                  }))
-                }
-              />
-            </div>
-          </div>
         </section>
 
         <section className="config-block">

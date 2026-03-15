@@ -7,7 +7,14 @@ import CalculatorModal from '../components/CalculatorModal';
 import Loader from '../components/loader/Loader';
 import { useAuth } from '../hooks/useAuth';
 import { useLanguage } from '../hooks/useLanguage';
-import { addExpense, bulkInsertExpenses, fetchExpenses, fetchPersonExpenses } from '../services/expenseService';
+import {
+  addExpense,
+  bulkInsertExpenses,
+  deleteExpense,
+  fetchExpenses,
+  fetchPersonExpenses,
+  updateExpense
+} from '../services/expenseService';
 import { loadAppConfig } from '../services/appConfigService';
 import { buildExpensePayload, decorateExpense } from '../utils/ledgerMeta';
 
@@ -55,6 +62,8 @@ const PersonLedger = () => {
   const [entrySearch, setEntrySearch] = useState('');
   const [transferSearch, setTransferSearch] = useState('');
   const [amountInput, setAmountInput] = useState('');
+  const [activeEntryMenuId, setActiveEntryMenuId] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
   const [transferForm, setTransferForm] = useState(() => ({
     targetName: '',
     amount: '',
@@ -107,7 +116,6 @@ const PersonLedger = () => {
       const existing = mapped.get(name) || {
         name,
         phone: '',
-        personType: item.personType || 'customer',
         displayCategory: item.displayCategory || 'khat',
         lastSeenAt: item.created_at || item.date || ''
       };
@@ -120,7 +128,6 @@ const PersonLedger = () => {
 
       if (seenAt && (!existing.lastSeenAt || new Date(seenAt).getTime() > new Date(existing.lastSeenAt).getTime())) {
         existing.lastSeenAt = seenAt;
-        existing.personType = item.personType || existing.personType;
         existing.displayCategory = item.displayCategory || existing.displayCategory;
 
         if (item.phone) {
@@ -233,15 +240,18 @@ const PersonLedger = () => {
     return Math.round((totals.credit / total) * 100);
   }, [totals.credit, totals.debit]);
 
-  const openEntryForm = (mode) => {
+  const openEntryForm = (mode, entry = null) => {
     setEntryMode(mode);
-    setAmountInput('');
+    setEditingEntry(entry);
+    setAmountInput(entry ? String(entry.amount || '') : '');
     setShowEntryModal(true);
+    setActiveEntryMenuId(null);
   };
 
   const closeEntryForm = () => {
     setShowEntryModal(false);
     setAmountInput('');
+    setEditingEntry(null);
   };
 
   const saveEntry = async () => {
@@ -261,19 +271,23 @@ const PersonLedger = () => {
     const payload = buildExpensePayload({
       billerName: personName,
       amount,
-      displayCategory: latestEntry?.displayCategory || defaultCategory,
-      personType: latestEntry?.personType || 'customer',
-      entryType: entryMode,
-      note: '',
-      phone: primaryPhone,
-      date: new Date().toISOString().slice(0, 10),
-      receipt: null
+      displayCategory: editingEntry?.displayCategory || latestEntry?.displayCategory || defaultCategory,
+      personType: 'customer',
+      entryType: editingEntry?.entryType || entryMode,
+      note: editingEntry?.cleanDescription || '',
+      phone: editingEntry?.phone || primaryPhone,
+      date: editingEntry?.date || new Date().toISOString().slice(0, 10),
+      receipt: editingEntry?.receipt || null
     });
 
-    const { error: saveError } = await addExpense({
-      ...payload,
-      user_id: user.id
-    });
+    const result = editingEntry?.id
+      ? await updateExpense(editingEntry.id, payload)
+      : await addExpense({
+          ...payload,
+          user_id: user.id
+        });
+
+    const { error: saveError } = result;
 
     setSaving(false);
 
@@ -287,29 +301,155 @@ const PersonLedger = () => {
     await loadPeople();
   };
 
+  const deleteLedgerEntry = async (entryId) => {
+    if (!entryId) return;
+
+    const confirmed = window.confirm('Delete this entry?');
+    if (!confirmed) return;
+
+    setSaving(true);
+    setError('');
+
+    const { error: deleteError } = await deleteExpense(entryId);
+
+    setSaving(false);
+
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+
+    setActiveEntryMenuId(null);
+    await loadEntries();
+    await loadPeople();
+  };
+
   const exportPersonPdf = () => {
     if (!filteredEntries.length) return;
 
+    const profile = loadAppConfig().profile;
+    const shopName = profile.displayName || 'Udhar Khata Book';
+
+    const ascending = [...filteredEntries].sort((a, b) => {
+      const aTime = new Date(a.created_at || a.date || '').getTime();
+      const bTime = new Date(b.created_at || b.date || '').getTime();
+      return aTime - bTime;
+    });
+
+    let running = 0;
+    const rows = ascending.map((entry, index) => {
+      running += entry.entryType === 'credit' ? Number(entry.amount || 0) : -Number(entry.amount || 0);
+      return {
+        no: index + 1,
+        dateCell:
+          entry.date && entry.created_at
+            ? `${format(new Date(entry.date), 'dd/MM/yyyy')}\n${format(new Date(entry.created_at), 'hh:mm a')}`
+            : entry.date
+              ? format(new Date(entry.date), 'dd/MM/yyyy')
+              : '-',
+        remark: entry.cleanDescription || '-',
+        debit: entry.entryType === 'debit' ? Number(entry.amount || 0) : null,
+        credit: entry.entryType === 'credit' ? Number(entry.amount || 0) : null,
+        closing: running
+      };
+    });
+
+    const totalDebit = rows.reduce((sum, row) => sum + (row.debit || 0), 0);
+    const totalCredit = rows.reduce((sum, row) => sum + (row.credit || 0), 0);
+    const finalBalance = rows[rows.length - 1]?.closing || 0;
+
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
-    doc.setFontSize(16);
-    doc.text(`${personName} Ledger`, 40, 42);
+
+    doc.setFillColor(229, 245, 245);
+    doc.rect(20, 16, 555, 74, 'F');
+
+    doc.setTextColor(16, 71, 83);
+    doc.setFontSize(22);
+    doc.text(shopName, 30, 46);
+
+    doc.setTextColor(34, 44, 48);
     doc.setFontSize(10);
-    doc.text(`Generated: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`, 40, 60);
+    doc.text('Digital India ka safe and secure Udhar Khata Book.', 30, 63);
+
+    doc.setFillColor(239, 248, 248);
+    doc.rect(20, 92, 555, 24, 'F');
+    doc.setFontSize(11);
+    doc.setTextColor(25, 102, 111);
+    doc.text('Transaction Report of All Time', 210, 108);
+
+    doc.setTextColor(20, 83, 87);
+    doc.setFontSize(12);
+    doc.text(`Name  :  ${personName}`, 30, 135);
+    doc.text(`Phone :  ${primaryPhone || '-'}`, 280, 135);
+    doc.text(`Linked:  ${user?.email || '-'}`, 30, 154);
 
     autoTable(doc, {
-      head: [['Date', 'Time', 'Type', 'Amount', 'Closing', 'Remark']],
-      body: filteredEntries.map((entry) => [
-        entry.date ? format(new Date(entry.date), 'dd/MM/yyyy') : '-',
-        entry.created_at ? format(new Date(entry.created_at), 'hh:mm a') : '--:--',
-        entry.entryType,
-        formatAmount(entry.amount),
-        formatAmount(entry.closingBalance),
-        entry.cleanDescription || '-'
+      head: [['No', 'Date', 'Remarks', 'Debit (Out)', 'Credit (In)', 'Cls Balance']],
+      body: rows.map((row) => [
+        row.no,
+        row.dateCell,
+        row.remark,
+        row.debit ? row.debit.toLocaleString('en-IN') : '-',
+        row.credit ? row.credit.toLocaleString('en-IN') : '-',
+        row.closing.toLocaleString('en-IN')
       ]),
-      startY: 76,
-      styles: { fontSize: 8, cellPadding: 4 },
-      headStyles: { fillColor: [12, 95, 69] }
+      startY: 170,
+      styles: {
+        fontSize: 9,
+        cellPadding: 5,
+        lineColor: [197, 218, 222],
+        lineWidth: 0.5,
+        textColor: [34, 42, 44]
+      },
+      headStyles: {
+        fillColor: [236, 246, 246],
+        textColor: [20, 89, 98],
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 34 },
+        1: { cellWidth: 88 },
+        2: { cellWidth: 172 },
+        3: { halign: 'right', cellWidth: 88 },
+        4: { halign: 'right', cellWidth: 88 },
+        5: { halign: 'right', cellWidth: 85 }
+      },
+      didParseCell: (hookData) => {
+        const row = rows[hookData.row.index];
+        if (!row || hookData.section !== 'body') return;
+
+        if (hookData.column.index === 3 && row.debit) {
+          hookData.cell.styles.textColor = [180, 48, 48];
+        }
+
+        if (hookData.column.index === 4 && row.credit) {
+          hookData.cell.styles.textColor = [32, 116, 52];
+        }
+
+        if (hookData.column.index === 5) {
+          hookData.cell.styles.textColor = row.closing >= 0 ? [32, 116, 52] : [180, 48, 48];
+        }
+      }
     });
+
+    const finalY = doc.lastAutoTable?.finalY || 170;
+    doc.setDrawColor(199, 217, 219);
+    doc.line(20, finalY + 10, 575, finalY + 10);
+
+    doc.setFontSize(12);
+    doc.setTextColor(22, 96, 48);
+    doc.text(`Total Credit ₹ : ${totalCredit.toLocaleString('en-IN')}`, 30, finalY + 30);
+
+    doc.setTextColor(169, 41, 43);
+    doc.text(`Total Debit ₹ : ${totalDebit.toLocaleString('en-IN')}`, 230, finalY + 30);
+
+    doc.setTextColor(finalBalance >= 0 ? 22 : 169, finalBalance >= 0 ? 96 : 41, finalBalance >= 0 ? 48 : 43);
+    doc.text(`Cls Balance ₹ : ${finalBalance.toLocaleString('en-IN')}`, 430, finalY + 30);
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 114, 118);
+    doc.text(`Print Date: ${format(new Date(), 'dd/MM/yyyy hh:mm a')}`, 30, 820);
+    doc.text('Page No. 1', 520, 820);
 
     doc.save(`khatawali-${personName}-${Date.now()}.pdf`);
   };
@@ -365,7 +505,7 @@ const PersonLedger = () => {
       billerName: personName,
       amount: transferAmount,
       displayCategory: latestEntry?.displayCategory || defaultCategory,
-      personType: latestEntry?.personType || 'customer',
+      personType: 'customer',
       entryType: 'debit',
       note: `${t('transferTo')} ${transferForm.targetName}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
       phone: primaryPhone,
@@ -377,7 +517,7 @@ const PersonLedger = () => {
       billerName: transferForm.targetName,
       amount: transferAmount,
       displayCategory: selectedTransferPerson?.displayCategory || latestEntry?.displayCategory || defaultCategory,
-      personType: selectedTransferPerson?.personType || 'customer',
+      personType: 'customer',
       entryType: 'credit',
       note: `${t('transferFrom')} ${personName}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
       phone: selectedTransferPerson?.phone || '',
@@ -556,9 +696,25 @@ const PersonLedger = () => {
                 <article className={`ledger-entry-card ref-entry-card ${entry.entryType}`} key={entry.id}>
                   <div className="entry-head-row">
                     <h4>{entry.cleanDescription || personName}</h4>
-                    <button type="button" className="entry-more-btn" aria-label="Entry options">
+                    <button
+                      type="button"
+                      className="entry-more-btn"
+                      aria-label="Entry options"
+                      onClick={() => setActiveEntryMenuId((prev) => (prev === entry.id ? null : entry.id))}
+                    >
                       <i className="bi bi-three-dots-vertical"></i>
                     </button>
+
+                    {activeEntryMenuId === entry.id && (
+                      <div className="entry-options-menu">
+                        <button type="button" onClick={() => openEntryForm(entry.entryType, entry)}>
+                          {t('update')}
+                        </button>
+                        <button type="button" className="danger" onClick={() => void deleteLedgerEntry(entry.id)}>
+                          {t('delete')}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className={`entry-amount ${entry.entryType === 'credit' ? 'credit' : 'debit'} ref-amount`}>
@@ -615,7 +771,9 @@ const PersonLedger = () => {
       {showEntryModal && (
         <div className="ledger-modal-overlay" onClick={closeEntryForm}>
           <div className="ledger-modal compact-entry-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>{entryMode === 'credit' ? t('creditReceiveTitle') : t('debitGiveTitle')}</h3>
+            <h3>
+              {editingEntry ? t('update') : entryMode === 'credit' ? t('creditReceiveTitle') : t('debitGiveTitle')}
+            </h3>
 
             <div className="simple-entry-row">
               <div className="input-group">
@@ -636,7 +794,7 @@ const PersonLedger = () => {
               </button>
 
               <button type="button" className="btn btn-primary" onClick={() => void saveEntry()} disabled={saving}>
-                {saving ? t('loading') : t('save')}
+                {saving ? t('loading') : editingEntry ? t('update') : t('save')}
               </button>
             </div>
           </div>
