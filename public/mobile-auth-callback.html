@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Khatawali Sign-in Redirect</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f5f8f6;
+        color: #1f2f24;
+      }
+
+      .card {
+        width: min(92vw, 420px);
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+        padding: 20px;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 1.2rem;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.5;
+      }
+
+      .manual-wrap {
+        margin-top: 16px;
+        display: none;
+      }
+
+      .manual-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: 600;
+        background: #0c8f47;
+        color: #ffffff;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <h1>Returning to Khatawali</h1>
+      <p id="status">Finishing sign-in and opening the app...</p>
+      <div class="manual-wrap" id="manualWrap">
+        <a id="manualLink" class="manual-link" href="#">Tap to open Khatawali</a>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        var suffix = window.location.search + window.location.hash;
+        var targets = [
+          'khatawali://login-callback',
+          'com.khatawali.app://auth/callback',
+          'com.khatawali.app://login-callback'
+        ].map(function (base) {
+          return base + suffix;
+        });
+
+        var status = document.getElementById('status');
+        var manualWrap = document.getElementById('manualWrap');
+        var manualLink = document.getElementById('manualLink');
+
+        var attemptIndex = 0;
+
+        var tryOpenNext = function () {
+          if (attemptIndex >= targets.length) {
+            status.textContent = 'Automatic redirect was blocked. Tap the button below to return to the app.';
+            manualLink.href = targets[0];
+            manualWrap.style.display = 'block';
+            return;
+          }
+
+          var target = targets[attemptIndex];
+          attemptIndex += 1;
+          manualLink.href = target;
+          window.location.replace(target);
+          window.setTimeout(tryOpenNext, 900);
+        };
+
+        tryOpenNext();
+      })();
+    </script>
+  </body>
+</html>

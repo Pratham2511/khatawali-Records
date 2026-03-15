@@ -3,6 +3,9 @@ import { Browser } from '@capacitor/browser';
 import { supabase } from './supabaseClient';
 
 export const NATIVE_AUTH_CALLBACK_URL = 'khatawali://login-callback';
+const DEFAULT_NATIVE_OAUTH_BRIDGE_URL = 'https://khatawali-records.vercel.app/mobile-auth-callback.html';
+const NATIVE_OAUTH_BRIDGE_URL =
+  import.meta.env.VITE_MOBILE_AUTH_BRIDGE_URL || DEFAULT_NATIVE_OAUTH_BRIDGE_URL;
 
 const KNOWN_NATIVE_CALLBACK_PREFIXES = [
   'khatawali://login-callback',
@@ -13,7 +16,7 @@ const KNOWN_NATIVE_CALLBACK_PREFIXES = [
 const isNativePlatform = () => Capacitor.isNativePlatform();
 
 const getOAuthRedirectUrl = () => {
-  if (isNativePlatform()) return NATIVE_AUTH_CALLBACK_URL;
+  if (isNativePlatform()) return NATIVE_OAUTH_BRIDGE_URL;
   if (typeof window !== 'undefined') return `${window.location.origin}/dashboard`;
   return NATIVE_AUTH_CALLBACK_URL;
 };
