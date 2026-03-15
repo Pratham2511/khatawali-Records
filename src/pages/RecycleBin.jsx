@@ -38,7 +38,6 @@ const RecycleBin = () => {
       billerName: snapshot.biller_name,
       amount: snapshot.amount,
       displayCategory: snapshot.displayCategory,
-      personType: snapshot.personType,
       entryType: snapshot.entryType,
       note: snapshot.cleanDescription,
       phone: snapshot.phone,

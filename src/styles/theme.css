@@ -1155,6 +1155,30 @@ a {
   font-weight: 700;
 }
 
+.quick-profile-modal {
+  width: min(680px, 100%);
+  background: #fbfdfb;
+  border: 1px solid #d5dfd6;
+}
+
+.quick-profile-header h3 {
+  color: #c44112;
+  margin-bottom: 12px;
+}
+
+.quick-profile-modal .input-group-text {
+  min-width: 46px;
+  justify-content: center;
+  font-size: 1.18rem;
+}
+
+.quick-profile-advice {
+  font-size: 0.95rem;
+  color: #1d6f64;
+  font-weight: 700;
+  text-align: center;
+}
+
 @media (min-width: 768px) {
   .ledger-screen,
   .person-ledger-screen {

@@ -272,7 +272,6 @@ const PersonLedger = () => {
       billerName: personName,
       amount,
       displayCategory: editingEntry?.displayCategory || latestEntry?.displayCategory || defaultCategory,
-      personType: 'customer',
       entryType: editingEntry?.entryType || entryMode,
       note: editingEntry?.cleanDescription || '',
       phone: editingEntry?.phone || primaryPhone,
@@ -328,7 +327,7 @@ const PersonLedger = () => {
     if (!filteredEntries.length) return;
 
     const profile = loadAppConfig().profile;
-    const shopName = profile.displayName || 'Udhar Khata Book';
+    const shopName = profile.displayName || 'Khatawali';
 
     const ascending = [...filteredEntries].sort((a, b) => {
       const aTime = new Date(a.created_at || a.date || '').getTime();
@@ -369,7 +368,7 @@ const PersonLedger = () => {
 
     doc.setTextColor(34, 44, 48);
     doc.setFontSize(10);
-    doc.text('Digital India ka safe and secure Udhar Khata Book.', 30, 63);
+    doc.text('Digital India ka safe and secure Khatawali ledger.', 30, 63);
 
     doc.setFillColor(239, 248, 248);
     doc.rect(20, 92, 555, 24, 'F');
@@ -505,7 +504,6 @@ const PersonLedger = () => {
       billerName: personName,
       amount: transferAmount,
       displayCategory: latestEntry?.displayCategory || defaultCategory,
-      personType: 'customer',
       entryType: 'debit',
       note: `${t('transferTo')} ${transferForm.targetName}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
       phone: primaryPhone,
@@ -517,7 +515,6 @@ const PersonLedger = () => {
       billerName: transferForm.targetName,
       amount: transferAmount,
       displayCategory: selectedTransferPerson?.displayCategory || latestEntry?.displayCategory || defaultCategory,
-      personType: 'customer',
       entryType: 'credit',
       note: `${t('transferFrom')} ${personName}${transferNote ? ` - ${transferNote}` : ''} (${transferStamp})`,
       phone: selectedTransferPerson?.phone || '',

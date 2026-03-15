@@ -18,7 +18,7 @@ import {
 import { signOut } from '../services/authService';
 import { toImagePayload } from '../services/fileService';
 import { isContactPickerSupported, pickDeviceContact } from '../services/contactService';
-import { loadAppConfig } from '../services/appConfigService';
+import { loadAppConfig, saveAppConfig } from '../services/appConfigService';
 import { pushDeletedEntry } from '../services/recycleBinService';
 import {
   buildExpensePayload,
@@ -36,6 +36,15 @@ const createInitialEntry = (defaultCategory) => ({
   note: '',
   date: new Date().toISOString().slice(0, 10),
   receipt: null
+});
+
+const createProfileDraft = (profile = {}) => ({
+  displayName: profile.displayName || '',
+  detailLine: profile.detailLine || '',
+  phone: profile.phone || '',
+  logoDataUrl: profile.logoDataUrl || '',
+  qrDataUrl: profile.qrDataUrl || '',
+  stampDataUrl: profile.stampDataUrl || ''
 });
 
 const rangeOptions = [
@@ -132,7 +141,11 @@ const Dashboard = () => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showStatementModal, setShowStatementModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showQuickProfileModal, setShowQuickProfileModal] = useState(false);
   const [hideTotal, setHideTotal] = useState(false);
+  const [quickProfile, setQuickProfile] = useState(() => createProfileDraft(loadAppConfig().profile));
+  const [quickProfileError, setQuickProfileError] = useState('');
+  const [quickProfileSaving, setQuickProfileSaving] = useState(false);
 
   const [categoryOptions] = useState(() => {
     const configuredItems = loadAppConfig().catalogItems || [];
@@ -310,7 +323,6 @@ const Dashboard = () => {
       billerName: entryForm.billerName,
       amount: normalizedAmount,
       displayCategory: entryForm.category,
-      personType: 'customer',
       entryType: entryForm.entryType,
       note: entryForm.note,
       phone: entryForm.phone,
@@ -396,7 +408,6 @@ const Dashboard = () => {
             billerName,
             amount,
             displayCategory: category,
-            personType: 'customer',
             entryType,
             note,
             phone,
@@ -482,11 +493,11 @@ const Dashboard = () => {
 
     doc.setTextColor(16, 71, 83);
     doc.setFontSize(24);
-    doc.text('Udhar Khata Book', 30, 47);
+    doc.text('Khatawali', 30, 47);
 
     doc.setTextColor(34, 44, 48);
     doc.setFontSize(10);
-    doc.text('Digital India ka safe and secure Udhar Khata Book.', 30, 63);
+    doc.text('Digital India ka safe and secure Khatawali ledger.', 30, 63);
 
     doc.setFillColor(239, 248, 248);
     doc.rect(20, 92, 555, 24, 'F');
@@ -581,6 +592,56 @@ const Dashboard = () => {
 
   const openPersonLedger = (personName) => {
     navigate(`/person/${encodeURIComponent(personName)}`);
+  };
+
+  const openQuickProfileModal = () => {
+    const current = loadAppConfig();
+    setQuickProfile(createProfileDraft(current.profile));
+    setQuickProfileError('');
+    setShowQuickProfileModal(true);
+  };
+
+  const closeQuickProfileModal = () => {
+    if (quickProfileSaving) return;
+    setShowQuickProfileModal(false);
+  };
+
+  const handleQuickProfileUpload = async (field, file) => {
+    if (!file) return;
+
+    try {
+      const payload = await toImagePayload(file);
+      setQuickProfile((prev) => ({
+        ...prev,
+        [field]: payload?.dataUrl || ''
+      }));
+      setQuickProfileError('');
+    } catch (uploadError) {
+      setQuickProfileError(uploadError.message || 'Unable to process image.');
+    }
+  };
+
+  const saveQuickProfile = () => {
+    setQuickProfileSaving(true);
+    setQuickProfileError('');
+
+    try {
+      const current = loadAppConfig();
+      saveAppConfig({
+        ...current,
+        profile: {
+          ...current.profile,
+          ...quickProfile
+        }
+      });
+
+      setShowQuickProfileModal(false);
+      setMessage(t('dataSynced'));
+    } catch (saveError) {
+      setQuickProfileError(saveError.message || 'Unable to save profile.');
+    } finally {
+      setQuickProfileSaving(false);
+    }
   };
 
   const handlePickContact = async () => {
@@ -680,7 +741,7 @@ const Dashboard = () => {
               {user?.email} <i className="bi bi-check2"></i>
             </p>
           </div>
-          <button className="icon-top-btn" type="button" onClick={() => navigate('/profile')}>
+          <button className="icon-top-btn" type="button" onClick={openQuickProfileModal}>
             <i className="bi bi-pencil-fill"></i>
           </button>
         </div>
@@ -1011,6 +1072,85 @@ const Dashboard = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showQuickProfileModal && (
+        <div className="ledger-modal-overlay" onClick={closeQuickProfileModal}>
+          <div className="ledger-modal quick-profile-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="quick-profile-header">
+              <h3>{t('setYourProfile')}</h3>
+            </div>
+
+            {quickProfileError && <div className="alert alert-danger py-2 mb-2">{quickProfileError}</div>}
+
+            <div className="mb-2">
+              <div className="input-group">
+                <span className="input-group-text"><i className="bi bi-person-circle"></i></span>
+                <input
+                  className="form-control"
+                  placeholder={t('shopCompanyName')}
+                  value={quickProfile.displayName}
+                  onChange={(event) => setQuickProfile((prev) => ({ ...prev, displayName: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <div className="input-group">
+                <span className="input-group-text"><i className="bi bi-geo-alt-fill"></i></span>
+                <input
+                  className="form-control"
+                  placeholder={t('addressBankGmail')}
+                  value={quickProfile.detailLine}
+                  onChange={(event) => setQuickProfile((prev) => ({ ...prev, detailLine: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="mb-2">
+              <div className="input-group">
+                <span className="input-group-text"><i className="bi bi-telephone-fill"></i></span>
+                <input
+                  className="form-control"
+                  placeholder={t('mobileNumber')}
+                  value={quickProfile.phone}
+                  onChange={(event) => setQuickProfile((prev) => ({ ...prev, phone: event.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="upload-grid mt-2">
+              <label className="upload-tile">
+                {quickProfile.logoDataUrl ? <img src={quickProfile.logoDataUrl} alt="Logo" /> : <i className="bi bi-image"></i>}
+                <span>{t('uploadLogo')}</span>
+                <input type="file" accept="image/*" hidden onChange={(event) => void handleQuickProfileUpload('logoDataUrl', event.target.files?.[0])} />
+              </label>
+
+              <label className="upload-tile">
+                {quickProfile.qrDataUrl ? <img src={quickProfile.qrDataUrl} alt="QR" /> : <i className="bi bi-qr-code"></i>}
+                <span>{t('uploadQr')}</span>
+                <input type="file" accept="image/*" hidden onChange={(event) => void handleQuickProfileUpload('qrDataUrl', event.target.files?.[0])} />
+              </label>
+
+              <label className="upload-tile">
+                {quickProfile.stampDataUrl ? <img src={quickProfile.stampDataUrl} alt="Stamp" /> : <i className="bi bi-award"></i>}
+                <span>{t('uploadStamp')}</span>
+                <input type="file" accept="image/*" hidden onChange={(event) => void handleQuickProfileUpload('stampDataUrl', event.target.files?.[0])} />
+              </label>
+            </div>
+
+            <p className="quick-profile-advice mb-0 mt-2">{t('uploadAdvice')}</p>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline-secondary" onClick={closeQuickProfileModal}>
+                {t('cancel')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={saveQuickProfile} disabled={quickProfileSaving}>
+                {quickProfileSaving ? t('loading') : t('save')}
+              </button>
+            </div>
           </div>
         </div>
       )}

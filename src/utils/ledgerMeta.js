@@ -16,7 +16,6 @@ export const LEDGER_CATEGORIES = [
   'Uttam'
 ];
 
-export const PERSON_TYPES = ['customer', 'supplier', 'other'];
 export const ENTRY_TYPES = ['credit', 'debit'];
 
 const META_PREFIX = '[[khatawali-meta:';
@@ -44,10 +43,6 @@ const safeJson = (value) => {
   } catch {
     return {};
   }
-};
-
-export const normalizePersonType = (value) => {
-  return PERSON_TYPES.includes(value) ? value : 'customer';
 };
 
 export const normalizeEntryType = (value) => {
@@ -113,14 +108,12 @@ export const buildExpensePayload = ({
   billerName,
   amount,
   displayCategory,
-  personType,
   entryType,
   note,
   phone,
   date,
   receipt
 }) => {
-  const normalizedPersonType = normalizePersonType(personType);
   const normalizedEntryType = normalizeEntryType(entryType);
   const chosenCategory = displayCategory || LEDGER_CATEGORIES[0];
 
@@ -134,7 +127,6 @@ export const buildExpensePayload = ({
 
   const metadata = {
     displayCategory: chosenCategory,
-    personType: normalizedPersonType,
     entryType: normalizedEntryType,
     phone: (phone || '').trim(),
     receipt: safeReceipt
@@ -153,13 +145,11 @@ export const decorateExpense = (expense) => {
   const amount = Number(expense.amount || 0);
   const meta = readLedgerMeta(expense.description || '');
   const entryType = normalizeEntryType(meta.entryType);
-  const personType = normalizePersonType(meta.personType);
 
   return {
     ...expense,
     amount,
     entryType,
-    personType,
     phone: (meta.phone || '').trim(),
     receipt: meta.receipt?.dataUrl ? meta.receipt : null,
     displayCategory: meta.displayCategory || expense.category || 'maintenance',
